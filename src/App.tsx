@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { Application, extend } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { NardiGameProvider } from "./contexts/NardiGameContext";
@@ -13,7 +14,7 @@ extend({
   Text,
 });
 
-const overlayStyle: React.CSSProperties = {
+const overlayStyle: CSSProperties = {
   position: "absolute",
   top: 0,
   left: 0,
@@ -25,7 +26,7 @@ const overlayStyle: React.CSSProperties = {
   pointerEvents: "none",
 };
 
-const overlayContentStyle: React.CSSProperties = {
+const overlayContentStyle: CSSProperties = {
   pointerEvents: "auto",
   display: "flex",
   alignItems: "center",

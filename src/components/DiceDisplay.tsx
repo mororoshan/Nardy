@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useNardiGame } from "../hooks/useNardiGame";
 
 export function DiceDisplay() {
@@ -57,7 +58,7 @@ export function DiceDisplay() {
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   container: {
     padding: 8,
     display: "flex",

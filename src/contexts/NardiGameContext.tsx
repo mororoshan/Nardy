@@ -1,5 +1,6 @@
 import { createContext, useCallback, useState, type ReactNode } from "react";
 import type { NardiGameContextValue } from "./nardiGameContextValue";
+import type { Player } from "../game/direction";
 import {
   createInitialState,
   applyMove,
@@ -23,7 +24,7 @@ export function NardiGameProvider({ children }: NardiGameProviderProps) {
   const [state, setState] = useState<NardiState>(createInitialState);
   const [selectedPoint, setSelectedPoint] = useState<number | null>(null);
 
-  const rollForFirstTurn = useCallback((player: "white" | "black"): number => {
+  const rollForFirstTurn = useCallback((player: Player): number => {
     const value = rollDie();
     setState((prev) => {
       if (prev.phase !== "firstRoll") return prev;

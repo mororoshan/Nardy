@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useNardiGame } from "../hooks/useNardiGame";
 import { getLegalDestinationsFromPoint } from "../game/nardiState";
 
@@ -24,7 +25,7 @@ export function GameStatus() {
     );
   }
 
-  if (state.phase === "firstRoll" || state.phase !== "playing") return null;
+  if (state.phase !== "playing") return null;
 
   return (
     <div style={styles.container}>
@@ -40,7 +41,7 @@ export function GameStatus() {
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   container: {
     padding: 8,
     display: "flex",
