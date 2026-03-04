@@ -123,6 +123,68 @@ function getAvailableDice(
   return list;
 }
 
+/** True if all 15 of the player's checkers are in home or borne off. */
+function canPlayerBearOff(state: NardiState, player: Player): boolean {
+  const myPoints = player === "white" ? state.whitePoints : state.blackPoints;
+  const borneOff = player === "white" ? state.whiteBornOff : state.blackBornOff;
+  let inHome = 0;
+  for (let i = 1; i <= 24; i++) {
+    if (isInHome(player, i)) inHome += myPoints[i];
+  }
+  return inHome + borneOff === 15;
+}
+
+/**
+ * Returns the legal move from this point with this die, or null if not legal.
+ * Caller is responsible for deduplication (same move via different die).
+ */
+function getMoveFromPointWithDie(
+  state: NardiState,
+  player: Player,
+  from: number,
+  dieValue: number,
+  dieIndex: number,
+  canBearOff: boolean,
+  leftHead: boolean,
+): LegalMove | null {
+  const myPoints = player === "white" ? state.whitePoints : state.blackPoints;
+  if (myPoints[from] === 0) return null;
+  if (isHead(player, from) && leftHead) return null;
+
+  const to = pointAfterSteps(player, from, dieValue);
+
+  if (to === 0) {
+    if (canBearOff && isInHome(player, from)) {
+      return {
+        from,
+        to: 0,
+        usedDiceIndices: [dieIndex as 0 | 1, dieIndex as 0 | 1],
+      };
+    }
+    return null;
+  }
+
+  if (
+    to >= 1 &&
+    to <= 24 &&
+    canLandOn(state, to, player) &&
+    !violatesPrimeRule(state, player, from, to)
+  ) {
+    return {
+      from,
+      to,
+      usedDiceIndices: dieIndex === 0 ? [0, 0] : [1, 1],
+    };
+  }
+  return null;
+}
+
+function dedupeKey(move: LegalMove): string {
+  return move.to === 0
+    ? `b-${move.from}-${move.usedDiceIndices[0]}`
+    : `${move.from}-${move.to}-${move.usedDiceIndices[0]}`;
+}
+
 export function getLegalMoves(state: NardiState): LegalMove[] {
   if (state.phase !== "playing" || state.dice === null) return [];
   const player = state.turn;
@@ -130,55 +192,26 @@ export function getLegalMoves(state: NardiState): LegalMove[] {
   const available = getAvailableDice(state);
   if (available.length === 0) return [];
 
-  const myPoints = player === "white" ? state.whitePoints : state.blackPoints;
-  let inHomeCount = 0;
-  let outsideHome = 0;
-  for (let i = 1; i <= 24; i++) {
-    if (isInHome(player, i)) inHomeCount += myPoints[i];
-    else outsideHome += myPoints[i];
-  }
-  const canBearOff =
-    outsideHome === 0 &&
-    inHomeCount +
-      (player === "white" ? state.whiteBornOff : state.blackBornOff) ===
-      15;
-
+  const canBearOff = canPlayerBearOff(state, player);
   const moves: LegalMove[] = [];
   const seen = new Set<string>();
 
   for (let from = 1; from <= 24; from++) {
-    if (myPoints[from] === 0) continue;
-    if (isHead(player, from) && leftHead) continue;
-
     for (const { value: die, dieIndex } of available) {
-      const to = pointAfterSteps(player, from, die);
-
-      if (to === 0 && canBearOff && isInHome(player, from)) {
-        const k = `b-${from}-${dieIndex}`;
-        if (!seen.has(k)) {
-          seen.add(k);
-          moves.push({
-            from,
-            to: 0,
-            usedDiceIndices: [dieIndex as 0 | 1, dieIndex as 0 | 1],
-          });
-        }
-      } else if (
-        to >= 1 &&
-        to <= 24 &&
-        canLandOn(state, to, player) &&
-        !violatesPrimeRule(state, player, from, to)
-      ) {
-        const k = `${from}-${to}-${dieIndex}`;
-        if (!seen.has(k)) {
-          seen.add(k);
-          moves.push({
-            from,
-            to,
-            usedDiceIndices: dieIndex === 0 ? [0, 0] : [1, 1],
-          });
-        }
-      }
+      const move = getMoveFromPointWithDie(
+        state,
+        player,
+        from,
+        die,
+        dieIndex,
+        canBearOff,
+        leftHead,
+      );
+      if (!move) continue;
+      const key = dedupeKey(move);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      moves.push(move);
     }
   }
   return moves;

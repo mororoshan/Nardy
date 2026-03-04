@@ -1,14 +1,22 @@
 import type { CSSProperties } from "react";
 import { useNardiGame } from "../hooks/useNardiGame";
-import { getLegalDestinationsFromPoint } from "../game/nardiState";
+import {
+  getLegalDestinationsFromPoint,
+  getLegalMoves,
+} from "../game/nardiState";
 
 export function GameStatus() {
-  const { state, selectedPoint, moveTo, newGame } = useNardiGame();
+  const { state, selectedPoint, moveTo, passWhenNoMoves, newGame } =
+    useNardiGame();
   const legalDests =
     selectedPoint !== null
       ? getLegalDestinationsFromPoint(state, selectedPoint)
       : [];
   const canBearOff = legalDests.includes(0);
+  const hasNoLegalMoves =
+    state.phase === "playing" &&
+    state.dice !== null &&
+    getLegalMoves(state).length === 0;
 
   if (state.phase === "gameOver" && state.gameOverResult) {
     const { winner, oynOrMars } = state.gameOverResult;
@@ -35,6 +43,16 @@ export function GameStatus() {
       {selectedPoint !== null && canBearOff && (
         <button type="button" style={styles.button} onClick={() => moveTo(0)}>
           Bear off
+        </button>
+      )}
+      {hasNoLegalMoves && (
+        <button
+          type="button"
+          style={styles.button}
+          onClick={passWhenNoMoves}
+          title="No legal moves with remaining die(s); end turn"
+        >
+          No moves — pass
         </button>
       )}
     </div>

@@ -1,7 +1,6 @@
 import type { CSSProperties } from "react";
 import { Application, extend } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { NardiGameProvider } from "./contexts/NardiGameContext";
 import { GameLayout } from "./components/GameLayout";
 import { BackgammonBoard } from "./components/BackgammonBoard";
 import { DiceDisplay } from "./components/DiceDisplay";
@@ -38,20 +37,18 @@ const overlayContentStyle: CSSProperties = {
 
 export default function App() {
   return (
-    <NardiGameProvider>
-      <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
-        <Application background="#1a1a2e" resizeTo={window}>
-          <GameLayout>
-            <BackgammonBoard />
-          </GameLayout>
-        </Application>
-        <div style={overlayStyle}>
-          <div style={overlayContentStyle}>
-            <DiceDisplay />
-            <GameStatus />
-          </div>
+    <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+      <Application background="#1a1a2e" resizeTo={window}>
+        <GameLayout>
+          <BackgammonBoard />
+        </GameLayout>
+      </Application>
+      <div style={overlayStyle}>
+        <div style={overlayContentStyle}>
+          <DiceDisplay />
+          <GameStatus />
         </div>
       </div>
-    </NardiGameProvider>
+    </div>
   );
 }

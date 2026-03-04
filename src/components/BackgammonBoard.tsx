@@ -127,6 +127,14 @@ export function BackgammonBoard() {
       <pixiGraphics
         draw={(g: Graphics) => {
           g.clear();
+          if (canSelectOrMove) {
+            for (const p of movablePoints) {
+              const { x, y } = pointIndexToPixelCenter(p);
+              g.circle(x, y, HIGHLIGHT_RADIUS)
+                .fill({ color: 0xeab308, alpha: 0.25 })
+                .stroke({ width: 2, color: 0xca8a04 });
+            }
+          }
           if (selectedPoint !== null) {
             const { x, y } = pointIndexToPixelCenter(selectedPoint);
             g.circle(x, y, HIGHLIGHT_RADIUS)
