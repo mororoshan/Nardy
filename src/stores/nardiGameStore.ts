@@ -85,8 +85,7 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
       getLegalMoves(state).length > 0
     )
       return;
-    const nextTurn: Player =
-      state.turn === "white" ? "black" : "white";
+    const nextTurn: Player = state.turn === "white" ? "black" : "white";
     set({
       state: {
         ...state,

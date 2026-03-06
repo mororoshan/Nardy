@@ -1,0 +1,122 @@
+/**
+ * WebRTC data channel message types for Nardi state sync.
+ */
+
+import type { NardiState } from "../game/nardiState";
+
+/** Message type discriminator for sync channel. */
+export const SyncMessageType = {
+  State: "state",
+  Move: "move",
+  Dice: "dice",
+  Pass: "pass",
+} as const;
+
+export type SyncMessageTypeValue =
+  (typeof SyncMessageType)[keyof typeof SyncMessageType];
+
+/** Payload for a single move (used when sending and in MoveMessage). */
+export interface MovePayload {
+  from: number;
+  to: number;
+  usedDiceIndices: [number, number];
+  /** True when this move uses all dice and ends the sender's turn. */
+  isLastMoveOfTurn: boolean;
+}
+
+export interface StateMessage {
+  type: typeof SyncMessageType.State;
+  state: NardiState;
+}
+
+export interface MoveMessage extends MovePayload {
+  type: typeof SyncMessageType.Move;
+}
+
+export interface DiceMessage {
+  type: typeof SyncMessageType.Dice;
+  dice: [number, number];
+}
+
+/** Sent when the sender ends their turn with no legal moves (pass). */
+export interface PassMessage {
+  type: typeof SyncMessageType.Pass;
+}
+
+export type SyncMessage =
+  | StateMessage
+  | MoveMessage
+  | DiceMessage
+  | PassMessage;
+
+/** State payload is trusted from the peer; no structural NardiState validation. */
+function isStateMessage(o: unknown): o is StateMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  if (obj.type !== SyncMessageType.State) return false;
+  return typeof obj.state === "object" && obj.state !== null;
+}
+
+function isMoveMessage(o: unknown): o is MoveMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  if (obj.type !== SyncMessageType.Move) return false;
+  const indices = obj.usedDiceIndices as unknown[];
+  return (
+    typeof obj.from === "number" &&
+    typeof obj.to === "number" &&
+    Array.isArray(obj.usedDiceIndices) &&
+    indices.length === 2 &&
+    typeof indices[0] === "number" &&
+    typeof indices[1] === "number" &&
+    (obj.isLastMoveOfTurn === undefined ||
+      typeof obj.isLastMoveOfTurn === "boolean")
+  );
+}
+
+function isDiceMessage(o: unknown): o is DiceMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  if (obj.type !== SyncMessageType.Dice) return false;
+  const dice = obj.dice as unknown[];
+  return (
+    Array.isArray(obj.dice) &&
+    dice.length === 2 &&
+    typeof dice[0] === "number" &&
+    typeof dice[1] === "number"
+  );
+}
+
+function isPassMessage(o: unknown): o is PassMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  return obj.type === SyncMessageType.Pass;
+}
+
+/**
+ * Parse and validate a sync message from the data channel. Returns null if invalid.
+ */
+export function parseSyncMessage(raw: string): SyncMessage | null {
+  let obj: unknown;
+  try {
+    obj = JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+  if (isStateMessage(obj)) return obj;
+  if (isMoveMessage(obj))
+    return {
+      type: SyncMessageType.Move,
+      from: obj.from,
+      to: obj.to,
+      usedDiceIndices: [obj.usedDiceIndices[0], obj.usedDiceIndices[1]],
+      isLastMoveOfTurn: obj.isLastMoveOfTurn === true,
+    };
+  if (isDiceMessage(obj))
+    return {
+      type: SyncMessageType.Dice,
+      dice: [obj.dice[0], obj.dice[1]],
+    };
+  if (isPassMessage(obj)) return { type: SyncMessageType.Pass };
+  return null;
+}

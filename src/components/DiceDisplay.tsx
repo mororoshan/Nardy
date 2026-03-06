@@ -1,10 +1,31 @@
 import type { CSSProperties } from "react";
 import { useNardiGame } from "../hooks/useNardiGame";
+import { useNardiGameStore } from "../stores/nardiGameStore";
+import type { Player } from "../game/direction";
 
-export function DiceDisplay() {
+export interface DiceDisplayProps {
+  localPlayer?: Player | null;
+  isMultiplayer?: boolean;
+  /** Called after local player rolls (playing phase); use to sync dice to peer. */
+  onAfterRoll?: (dice: [number, number]) => void;
+  /** Called after local player rolls in first-roll phase; use to sync state to peer. */
+  onAfterFirstRoll?: () => void;
+}
+
+export function DiceDisplay({
+  localPlayer = null,
+  isMultiplayer = false,
+  onAfterRoll,
+  onAfterFirstRoll,
+}: DiceDisplayProps = {}) {
   const { state, rollDice, rollForFirstTurn } = useNardiGame();
 
   if (state.phase === "firstRoll") {
+    const showWhiteRoll =
+      !isMultiplayer || localPlayer === null || localPlayer === "white";
+    const showBlackRoll =
+      (!isMultiplayer || localPlayer === null || localPlayer === "black") &&
+      (state.firstRollDice.white !== null || !isMultiplayer);
     return (
       <div style={styles.container}>
         <p style={styles.text}>
@@ -14,24 +35,34 @@ export function DiceDisplay() {
           <div style={styles.column}>
             <span style={styles.label}>White</span>
             <span style={styles.die}>{state.firstRollDice.white ?? "—"}</span>
-            <button
-              type="button"
-              style={styles.button}
-              onClick={() => rollForFirstTurn("white")}
-            >
-              Roll
-            </button>
+            {showWhiteRoll && (
+              <button
+                type="button"
+                style={styles.button}
+                onClick={() => {
+                  rollForFirstTurn("white");
+                  onAfterFirstRoll?.();
+                }}
+              >
+                Roll
+              </button>
+            )}
           </div>
           <div style={styles.column}>
             <span style={styles.label}>Black</span>
             <span style={styles.die}>{state.firstRollDice.black ?? "—"}</span>
-            <button
-              type="button"
-              style={styles.button}
-              onClick={() => rollForFirstTurn("black")}
-            >
-              Roll
-            </button>
+            {showBlackRoll && (
+              <button
+                type="button"
+                style={styles.button}
+                onClick={() => {
+                  rollForFirstTurn("black");
+                  onAfterFirstRoll?.();
+                }}
+              >
+                Roll
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -41,6 +72,8 @@ export function DiceDisplay() {
   if (state.phase !== "playing") return null;
 
   const needsRoll = state.dice === null;
+  const isMyTurn =
+    !isMultiplayer || localPlayer === null || state.turn === localPlayer;
 
   return (
     <div style={styles.container}>
@@ -48,8 +81,18 @@ export function DiceDisplay() {
         <span style={styles.dice}>
           {state.dice ? `${state.dice[0]} – ${state.dice[1]}` : "—"}
         </span>
-        {needsRoll && (
-          <button type="button" style={styles.button} onClick={rollDice}>
+        {needsRoll && isMyTurn && (
+          <button
+            type="button"
+            style={styles.button}
+            onClick={() => {
+              rollDice();
+              if (onAfterRoll) {
+                const d = useNardiGameStore.getState().state.dice;
+                if (d) onAfterRoll(d);
+              }
+            }}
+          >
             Roll dice
           </button>
         )}

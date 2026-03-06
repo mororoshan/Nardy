@@ -1,5 +1,6 @@
 import { Rectangle } from "pixi.js";
 import type { Graphics } from "pixi.js";
+import type { Player } from "../game/direction";
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
@@ -13,19 +14,36 @@ import { useNardiGame } from "../hooks/useNardiGame";
 import {
   getPointsWithMovableChips,
   getLegalDestinationsFromPoint,
+  getLegalMoves,
+  applyMove,
 } from "../game/nardiState";
+import type { MovePayload } from "../hooks/useWebRtcSync";
 
 const PIECE_RADIUS = Math.min(pointW, pointH) * 0.35;
 const HIGHLIGHT_RADIUS = Math.min(pointW, pointH) * 0.42;
 
-export function BackgammonBoard() {
+export interface BackgammonBoardProps {
+  localPlayer?: Player | null;
+  isMultiplayer?: boolean;
+  /** Called after a move with the applied move payload (for sync). */
+  onAfterMove?: (move: MovePayload) => void;
+}
+
+export function BackgammonBoard({
+  localPlayer = null,
+  isMultiplayer = false,
+  onAfterMove,
+}: BackgammonBoardProps = {}) {
   const { state, selectedPoint, selectPoint, moveTo } = useNardiGame();
   const movablePoints = getPointsWithMovableChips(state);
   const legalDests =
     selectedPoint !== null
       ? getLegalDestinationsFromPoint(state, selectedPoint)
       : [];
-  const canSelectOrMove = state.phase === "playing" && state.dice !== null;
+  const isMyTurn =
+    !isMultiplayer || localPlayer === null || state.turn === localPlayer;
+  const canSelectOrMove =
+    state.phase === "playing" && state.dice !== null && isMyTurn;
 
   const handlePointerDown = (e: {
     global: { x: number; y: number };
@@ -42,7 +60,30 @@ export function BackgammonBoard() {
     }
     if (selectedPoint !== null) {
       if (legalDests.includes(pointIndex)) {
-        moveTo(pointIndex);
+        const moves = getLegalMoves(state);
+        const move = moves.find(
+          (m) =>
+            m.from === selectedPoint &&
+            (m.to === pointIndex || (m.to === 0 && pointIndex === 0)),
+        );
+        if (move) {
+          const next = applyMove(
+            state,
+            move.from,
+            move.to,
+            move.usedDiceIndices,
+          );
+          const payload: MovePayload = {
+            from: move.from,
+            to: move.to,
+            usedDiceIndices: move.usedDiceIndices,
+            isLastMoveOfTurn: next.dice === null,
+          };
+          moveTo(pointIndex);
+          onAfterMove?.(payload);
+        } else {
+          moveTo(pointIndex);
+        }
       } else if (movablePoints.includes(pointIndex)) {
         selectPoint(pointIndex);
       } else {

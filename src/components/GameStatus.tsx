@@ -1,11 +1,28 @@
 import type { CSSProperties } from "react";
+import type { Player } from "../game/direction";
 import { useNardiGame } from "../hooks/useNardiGame";
 import {
   getLegalDestinationsFromPoint,
   getLegalMoves,
+  applyMove,
 } from "../game/nardiState";
+import type { MovePayload } from "../hooks/useWebRtcSync";
 
-export function GameStatus() {
+export interface GameStatusProps {
+  localPlayer?: Player | null;
+  isMultiplayer?: boolean;
+  /** Called after a move (e.g. bear off) with the applied move payload. */
+  onAfterMove?: (move: MovePayload) => void;
+  /** Called after user passes (no legal moves). */
+  onAfterPass?: () => void;
+}
+
+export function GameStatus({
+  localPlayer = null,
+  isMultiplayer = false,
+  onAfterMove,
+  onAfterPass,
+}: GameStatusProps = {}) {
   const { state, selectedPoint, moveTo, passWhenNoMoves, newGame } =
     useNardiGame();
   const legalDests =
@@ -17,6 +34,8 @@ export function GameStatus() {
     state.phase === "playing" &&
     state.dice !== null &&
     getLegalMoves(state).length === 0;
+  const isMyTurn =
+    !isMultiplayer || localPlayer === null || state.turn === localPlayer;
 
   if (state.phase === "gameOver" && state.gameOverResult) {
     const { winner, oynOrMars } = state.gameOverResult;
@@ -38,18 +57,52 @@ export function GameStatus() {
   return (
     <div style={styles.container}>
       <p style={styles.turn}>
-        {state.turn === "white" ? "White" : "Black"}&apos;s turn
+        {isMultiplayer && localPlayer !== null
+          ? state.turn === localPlayer
+            ? "Your turn"
+            : "Opponent's turn"
+          : `${state.turn === "white" ? "White" : "Black"}'s turn`}
       </p>
-      {selectedPoint !== null && canBearOff && (
-        <button type="button" style={styles.button} onClick={() => moveTo(0)}>
-          Bear off
-        </button>
-      )}
-      {hasNoLegalMoves && (
+      {isMyTurn && selectedPoint !== null && canBearOff && (
         <button
           type="button"
           style={styles.button}
-          onClick={passWhenNoMoves}
+          onClick={() => {
+            const moves = getLegalMoves(state);
+            const move = moves.find(
+              (m) => m.from === selectedPoint && m.to === 0,
+            );
+            if (move) {
+              const next = applyMove(
+                state,
+                move.from,
+                move.to,
+                move.usedDiceIndices,
+              );
+              const payload: MovePayload = {
+                from: move.from,
+                to: move.to,
+                usedDiceIndices: move.usedDiceIndices,
+                isLastMoveOfTurn: next.dice === null,
+              };
+              moveTo(0);
+              onAfterMove?.(payload);
+            } else {
+              moveTo(0);
+            }
+          }}
+        >
+          Bear off
+        </button>
+      )}
+      {isMyTurn && hasNoLegalMoves && (
+        <button
+          type="button"
+          style={styles.button}
+          onClick={() => {
+            passWhenNoMoves();
+            onAfterPass?.();
+          }}
           title="No legal moves with remaining die(s); end turn"
         >
           No moves — pass
