@@ -76,11 +76,13 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
   const remotePlayerRef = useRef<Player | null>(null);
 
   const cleanup = useCallback(() => {
-    connectionRef.current?.close();
+    const conn = connectionRef.current;
+    const sig = signalingRef.current;
     connectionRef.current = null;
-    signalingRef.current?.leave();
-    signalingRef.current?.close();
     signalingRef.current = null;
+    conn?.close();
+    sig?.leave();
+    sig?.close();
     hasReceivedStateRef.current = false;
     setConnectionStatus(ConnectionStatus.Disconnected);
     setRoomId(null);
@@ -208,7 +210,9 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         connectionRef.current?.receiveSignal(data);
       },
       onPeerLeft: cleanup,
-      onError: () => cleanup,
+      onError: () => {
+        cleanup();
+      },
       onClose: cleanup,
     });
     signaling.createRoom();
@@ -248,7 +252,9 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         onJoined: () => {},
         onSignal: (data) => conn.receiveSignal(data),
         onPeerLeft: cleanup,
-        onError: () => cleanup,
+        onError: () => {
+          cleanup();
+        },
         onClose: cleanup,
       });
       signaling.joinRoom(id);

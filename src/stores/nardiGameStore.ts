@@ -10,15 +10,24 @@ import {
   applyMove,
   getLegalMoves,
   type NardiState,
+  type MoveThisTurn,
 } from "../game/nardiState";
 
 function rollDie(): number {
   return Math.floor(Math.random() * 6) + 1;
 }
 
+/** One completed turn: who moved, dice rolled, and moves made. */
+export interface GameHistoryEntry {
+  turn: Player;
+  dice: [number, number];
+  moves: MoveThisTurn[];
+}
+
 export interface NardiGameStore {
   state: NardiState;
   selectedPoint: number | null;
+  gameHistory: GameHistoryEntry[];
   rollForFirstTurn: (player: Player) => number;
   rollDice: () => void;
   selectPoint: (pointIndex: number | null) => void;
@@ -31,6 +40,7 @@ export interface NardiGameStore {
 export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
   state: createInitialState(),
   selectedPoint: null,
+  gameHistory: [],
 
   rollForFirstTurn: (player: Player) => {
     const value = rollDie();
@@ -64,7 +74,7 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
   },
 
   moveTo: (pointIndex: number) => {
-    const { state, selectedPoint } = get();
+    const { state, selectedPoint, gameHistory } = get();
     if (selectedPoint === null) return;
     const moves = getLegalMoves(state);
     const move = moves.find(
@@ -74,11 +84,27 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
     );
     if (!move) return;
     const next = applyMove(state, move.from, move.to, move.usedDiceIndices);
-    set({ state: next, selectedPoint: null });
+    const movesThisTurn = [
+      ...state.movesThisTurn,
+      {
+        from: move.from,
+        to: move.to,
+        usedDiceIndices: move.usedDiceIndices,
+      },
+    ];
+    const entry: GameHistoryEntry | null =
+      next.phase === "playing" && next.dice === null && state.dice !== null
+        ? { turn: state.turn, dice: state.dice, moves: movesThisTurn }
+        : null;
+    set({
+      state: next,
+      selectedPoint: null,
+      gameHistory: entry ? [...gameHistory, entry] : gameHistory,
+    });
   },
 
   passWhenNoMoves: () => {
-    const { state } = get();
+    const { state, gameHistory } = get();
     if (
       state.phase !== "playing" ||
       state.dice === null ||
@@ -86,6 +112,11 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
     )
       return;
     const nextTurn: Player = state.turn === "white" ? "black" : "white";
+    const entry: GameHistoryEntry = {
+      turn: state.turn,
+      dice: state.dice,
+      moves: [],
+    };
     set({
       state: {
         ...state,
@@ -95,10 +126,11 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
         turn: nextTurn,
       },
       selectedPoint: null,
+      gameHistory: [...gameHistory, entry],
     });
   },
 
   newGame: () => {
-    set({ state: createInitialState(), selectedPoint: null });
+    set({ state: createInitialState(), selectedPoint: null, gameHistory: [] });
   },
 }));

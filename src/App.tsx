@@ -1,11 +1,9 @@
-import type { CSSProperties } from "react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Application, extend } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { GameLayout } from "./components/GameLayout";
 import { BackgammonBoard } from "./components/BackgammonBoard";
-import { DiceDisplay } from "./components/DiceDisplay";
-import { GameStatus } from "./components/GameStatus";
+import { GameSidebar } from "./components/GameSidebar";
 import { MainMenu } from "./components/MainMenu";
 import {
   useWebRtcSync,
@@ -20,44 +18,29 @@ extend({
   Text,
 });
 
-const overlayStyle: CSSProperties = {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  right: 0,
+const gameScreenStyle: React.CSSProperties = {
   display: "flex",
-  justifyContent: "center",
-  gap: 24,
-  padding: 12,
-  pointerEvents: "none",
+  width: "100vw",
+  height: "100vh",
+  position: "relative",
+  overflow: "hidden",
 };
 
-const overlayContentStyle: CSSProperties = {
-  pointerEvents: "auto",
-  display: "flex",
-  alignItems: "center",
-  gap: 24,
-  backgroundColor: "rgba(26, 26, 46, 0.9)",
-  padding: "8px 16px",
-  borderRadius: 8,
-};
-
-const backButtonStyle: CSSProperties = {
-  position: "absolute",
-  top: 12,
-  left: 12,
-  padding: "8px 16px",
-  fontSize: 14,
-  backgroundColor: "rgba(63, 63, 70, 0.9)",
-  color: "#fff",
-  border: "none",
-  borderRadius: 8,
-  cursor: "pointer",
-  pointerEvents: "auto",
+const boardAreaStyle: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  position: "relative",
+  backgroundColor: "#1a1a2e",
+  overflow: "hidden",
 };
 
 export default function App() {
   const [screen, setScreen] = useState<"menu" | "game">("menu");
+  const [boardContainer, setBoardContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
+  const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
+
   const {
     createGame,
     joinGame,
@@ -71,6 +54,23 @@ export default function App() {
     sendPass,
   } = useWebRtcSync();
   const isMultiplayer = connectionStatus !== ConnectionStatus.Disconnected;
+
+  const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
+    setBoardContainer(el);
+  }, []);
+
+  useEffect(() => {
+    if (!boardContainer) return;
+    const update = () =>
+      setBoardSize({
+        width: boardContainer.offsetWidth,
+        height: boardContainer.offsetHeight,
+      });
+    const ro = new ResizeObserver(update);
+    ro.observe(boardContainer);
+    update();
+    return () => ro.disconnect();
+  }, [boardContainer]);
 
   const onAfterMove = (move: MovePayload) => {
     if (isMultiplayer) sendMove(move);
@@ -105,79 +105,41 @@ export default function App() {
     );
   }
 
-  const gameDivRef = useRef<HTMLDivElement>(null);
+  // Only mount Application when we have the board container ref, so the canvas
+  // is constrained to the board area and does not cover the sidebar (avoid
+  // resizeTo=window on first frame which can paint full viewport).
+  const resizeTarget = boardContainer ?? undefined;
 
   return (
-    <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
-      <button
-        type="button"
-        style={backButtonStyle}
-        onClick={handleBackToMenu}
-        title="Back to menu"
-      >
-        ← Menu
-      </button>
-      <div style={{
-        outline: '1px soild lime',
-        width: '600px',
-        height: '400px',
-      }} ref={gameDivRef}>
-
+    <div style={gameScreenStyle}>
+      <div ref={setBoardAreaRef} style={boardAreaStyle}>
+        {resizeTarget && (
+          <Application background="#1a1a2e" resizeTo={resizeTarget}>
+            <GameLayout
+              width={boardSize.width > 0 ? boardSize.width : undefined}
+              height={boardSize.height > 0 ? boardSize.height : undefined}
+            >
+              <BackgammonBoard
+                localPlayer={localPlayer}
+                isMultiplayer={isMultiplayer}
+                onAfterMove={isMultiplayer ? onAfterMove : undefined}
+              />
+            </GameLayout>
+          </Application>
+        )}
       </div>
-      <Application background="#1a1a2e" resizeTo={gameDivRef}>
-        <GameLayout>
-          <BackgammonBoard
-            localPlayer={localPlayer}
-            isMultiplayer={isMultiplayer}
-            onAfterMove={isMultiplayer ? onAfterMove : undefined}
-          />
-        </GameLayout>
-      </Application>
-      <div style={overlayStyle}>
-        <div style={overlayContentStyle}>
-          {connectionStatus !== ConnectionStatus.Disconnected && (
-            <span style={{ fontSize: 12, color: "#a1a1aa" }}>
-              {connectionStatus === ConnectionStatus.Connecting
-                ? "Connecting…"
-                : "Connected"}
-            </span>
-          )}
-          {roomId && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 12, color: "#a1a1aa" }}>
-                Room: <strong style={{ color: "#e4e4e7" }}>{roomId}</strong>
-              </span>
-              <button
-                type="button"
-                onClick={copyRoomCode}
-                style={{
-                  fontSize: 12,
-                  padding: "4px 8px",
-                  cursor: "pointer",
-                  backgroundColor: "#3f3f46",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 4,
-                }}
-              >
-                Copy code
-              </button>
-            </div>
-          )}
-          <DiceDisplay
-            localPlayer={localPlayer}
-            isMultiplayer={isMultiplayer}
-            onAfterRoll={isMultiplayer ? sendDice : undefined}
-            onAfterFirstRoll={isMultiplayer ? sendCurrentState : undefined}
-          />
-          <GameStatus
-            localPlayer={localPlayer}
-            isMultiplayer={isMultiplayer}
-            onAfterMove={isMultiplayer ? onAfterMove : undefined}
-            onAfterPass={isMultiplayer ? onAfterPass : undefined}
-          />
-        </div>
-      </div>
+      <GameSidebar
+        onBackToMenu={handleBackToMenu}
+        connectionStatus={connectionStatus}
+        roomId={roomId}
+        onCopyRoomCode={copyRoomCode}
+        localPlayer={localPlayer}
+        isMultiplayer={isMultiplayer}
+        onAfterMove={isMultiplayer ? onAfterMove : undefined}
+        onAfterPass={isMultiplayer ? onAfterPass : undefined}
+        onAfterRoll={isMultiplayer ? sendDice : undefined}
+        onAfterFirstRoll={isMultiplayer ? sendCurrentState : undefined}
+      />
     </div>
   );
 }
