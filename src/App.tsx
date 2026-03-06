@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Application, extend } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { GameLayout } from "./components/GameLayout";
@@ -105,6 +105,8 @@ export default function App() {
     );
   }
 
+  const gameDivRef = useRef<HTMLDivElement>(null);
+
   return (
     <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
       <button
@@ -115,7 +117,14 @@ export default function App() {
       >
         ← Menu
       </button>
-      <Application background="#1a1a2e" resizeTo={window}>
+      <div style={{
+        outline: '1px soild lime',
+        width: '600px',
+        height: '400px',
+      }} ref={gameDivRef}>
+
+      </div>
+      <Application background="#1a1a2e" resizeTo={gameDivRef}>
         <GameLayout>
           <BackgammonBoard
             localPlayer={localPlayer}

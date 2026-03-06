@@ -24,7 +24,15 @@ import {
   type MovePayload,
 } from "../sync/webrtcSyncTypes";
 
-const SIGNALING_URL = "ws://localhost:8080";
+/** Use same host as the page so phone/other devices reach your machine; wss when page is HTTPS. Override with VITE_SIGNALING_URL (e.g. ws://172.19.0.2:8080). */
+const SIGNALING_PORT = 8080;
+function getSignalingUrl(): string {
+  const envUrl = import.meta.env.VITE_SIGNALING_URL;
+  if (envUrl && typeof envUrl === "string") return envUrl.replace(/\/$/, "");
+  if (typeof window === "undefined") return "ws://localhost:8080";
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.hostname}:${SIGNALING_PORT}`;
+}
 
 /** Connection status for UI. */
 export const ConnectionStatus = {
@@ -160,7 +168,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     cleanup();
     setConnectionStatus(ConnectionStatus.Connecting);
     setIsCreator(true);
-    const signaling = new SignalingClient(SIGNALING_URL);
+    const signaling = new SignalingClient(getSignalingUrl());
     signalingRef.current = signaling;
     try {
       await signaling.connect();
@@ -213,7 +221,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       setIsCreator(false);
       setRoomId(id);
       setRoomInUrl(id);
-      const signaling = new SignalingClient(SIGNALING_URL);
+      const signaling = new SignalingClient(getSignalingUrl());
       signalingRef.current = signaling;
       try {
         await signaling.connect();
