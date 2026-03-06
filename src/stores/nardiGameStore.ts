@@ -1,6 +1,7 @@
 /**
  * Zustand store for Nardi game UI state and actions.
- * Game rules remain in nardiState.ts; this store holds state + selectedPoint and dispatches actions.
+ * This is the single source of truth for game state; sync and UI read/write only through here.
+ * Game rules remain in nardiState.ts; this store holds state + selectedPoint + gameHistory and dispatches actions.
  */
 
 import { create } from "zustand";

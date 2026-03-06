@@ -1,28 +1,17 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
 import type { Player } from "../game/direction";
-import type {
-  ConnectionStatusValue,
-  MovePayload,
-} from "../hooks/useWebRtcSync";
 import type { GameHistoryEntry } from "../stores/nardiGameStore";
 import { useNardiGameStore } from "../stores/nardiGameStore";
+import type { NardiGameSession } from "../session/gameSessionTypes";
 import { DiceDisplay } from "./DiceDisplay";
 import { GameStatus } from "./GameStatus";
 
 const SIDEBAR_WIDTH = 300;
 
 export interface GameSidebarProps {
+  session: NardiGameSession;
   onBackToMenu: () => void;
-  connectionStatus: ConnectionStatusValue;
-  roomId: string | null;
-  onCopyRoomCode: () => void;
-  localPlayer: Player | null;
-  isMultiplayer: boolean;
-  onAfterMove?: (move: MovePayload) => void;
-  onAfterPass?: () => void;
-  onAfterRoll?: (dice: [number, number]) => void;
-  onAfterFirstRoll?: () => void;
 }
 
 const sidebarStyle: CSSProperties = {
@@ -148,18 +137,7 @@ function MovesTabContent() {
   );
 }
 
-export function GameSidebar({
-  onBackToMenu,
-  connectionStatus,
-  roomId,
-  onCopyRoomCode,
-  localPlayer,
-  isMultiplayer,
-  onAfterMove,
-  onAfterPass,
-  onAfterRoll,
-  onAfterFirstRoll,
-}: GameSidebarProps) {
+export function GameSidebar({ session, onBackToMenu }: GameSidebarProps) {
   const [activeTab, setActiveTab] = useState<"moves" | "controls">("controls");
 
   return (
@@ -173,12 +151,14 @@ export function GameSidebar({
         >
           ← Menu
         </button>
-        {connectionStatus !== "disconnected" && (
+        {session.connectionStatus !== "disconnected" && (
           <span style={{ fontSize: 12, color: "#a1a1aa" }}>
-            {connectionStatus === "connecting" ? "Connecting…" : "Connected"}
+            {session.connectionStatus === "connecting"
+              ? "Connecting…"
+              : "Connected"}
           </span>
         )}
-        {roomId && (
+        {session.roomId && (
           <div
             style={{
               display: "flex",
@@ -188,11 +168,11 @@ export function GameSidebar({
             }}
           >
             <span style={{ fontSize: 12, color: "#a1a1aa" }}>
-              Room: <strong style={{ color: "#e4e4e7" }}>{roomId}</strong>
+              Room: <strong style={{ color: "#e4e4e7" }}>{session.roomId}</strong>
             </span>
             <button
               type="button"
-              onClick={onCopyRoomCode}
+              onClick={session.copyRoomCode}
               style={{
                 fontSize: 12,
                 padding: "4px 8px",
@@ -229,16 +209,16 @@ export function GameSidebar({
         {activeTab === "controls" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <DiceDisplay
-              localPlayer={localPlayer}
-              isMultiplayer={isMultiplayer}
-              onAfterRoll={onAfterRoll}
-              onAfterFirstRoll={onAfterFirstRoll}
+              localPlayer={session.localPlayer}
+              isMultiplayer={session.mode === "multiplayer"}
+              onAfterRoll={session.onAfterRoll}
+              onAfterFirstRoll={session.onAfterFirstRoll}
             />
             <GameStatus
-              localPlayer={localPlayer}
-              isMultiplayer={isMultiplayer}
-              onAfterMove={onAfterMove}
-              onAfterPass={onAfterPass}
+              localPlayer={session.localPlayer}
+              isMultiplayer={session.mode === "multiplayer"}
+              onAfterMove={session.onAfterMove}
+              onAfterPass={session.onAfterPass}
             />
           </div>
         )}

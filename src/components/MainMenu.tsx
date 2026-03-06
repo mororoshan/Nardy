@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
+import { theme } from "../theme";
 import { getRoomFromUrl } from "../sync/roomUrl";
 
 export interface MainMenuProps {
@@ -14,41 +15,41 @@ const containerStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   minHeight: "100vh",
-  gap: 16,
-  padding: 24,
-  backgroundColor: "#1a1a2e",
-  color: "#e4e4e7",
+  gap: theme.spacing.lg,
+  padding: theme.spacing.xl,
+  backgroundColor: theme.colors.background,
+  color: theme.colors.text,
 };
 
 const titleStyle: CSSProperties = {
   fontSize: 28,
   fontWeight: 600,
-  marginBottom: 8,
+  marginBottom: theme.spacing.sm,
 };
 
 const buttonStyle: CSSProperties = {
   padding: "12px 24px",
-  fontSize: 16,
-  backgroundColor: "#3f3f46",
+  fontSize: theme.fontSize.lg,
+  backgroundColor: theme.colors.surfaceElevated,
   color: "#fff",
   border: "none",
-  borderRadius: 8,
+  borderRadius: theme.borderRadius.md,
   cursor: "pointer",
 };
 
 const inputStyle: CSSProperties = {
   padding: "10px 14px",
-  fontSize: 16,
-  backgroundColor: "#27272a",
+  fontSize: theme.fontSize.lg,
+  backgroundColor: theme.colors.surface,
   color: "#fff",
-  border: "1px solid #52525b",
-  borderRadius: 8,
+  border: `1px solid ${theme.colors.border}`,
+  borderRadius: theme.borderRadius.md,
   minWidth: 200,
 };
 
 const rowStyle: CSSProperties = {
   display: "flex",
-  gap: 8,
+  gap: theme.spacing.sm,
   alignItems: "center",
 };
 
@@ -57,11 +58,10 @@ export function MainMenu({
   onJoinGame,
   onSinglePlayer,
 }: MainMenuProps) {
-  const [joinRoomId, setJoinRoomId] = useState("");
+  const roomInUrl = getRoomFromUrl();
+  const [joinRoomId, setJoinRoomId] = useState(roomInUrl ?? "");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  const roomInUrl = getRoomFromUrl();
 
   const handleCreate = async () => {
     setError(null);
@@ -145,7 +145,7 @@ export function MainMenu({
       {roomInUrl && (
         <button
           type="button"
-          style={{ ...buttonStyle, backgroundColor: "#4f46e5" }}
+          style={{ ...buttonStyle, backgroundColor: theme.colors.accent }}
           onClick={handleRejoin}
           disabled={loading !== null}
         >
@@ -153,7 +153,9 @@ export function MainMenu({
         </button>
       )}
       {error && (
-        <p style={{ color: "#f87171", margin: 0, fontSize: 14 }}>{error}</p>
+        <p style={{ color: theme.colors.error, margin: 0, fontSize: theme.fontSize.md }}>
+          {error}
+        </p>
       )}
     </div>
   );

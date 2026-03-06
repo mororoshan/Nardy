@@ -1,6 +1,10 @@
 /**
  * WebRTC sync: signaling + data channel, explicit send on every move/pass,
  * clear receive handling that sets "my turn" from game state.
+ *
+ * State ownership: the store (nardiGameStore) is the single source of truth.
+ * This hook only pushes remote updates into the store; it does not keep a copy of game state.
+ * Reconnection = rejoin (no automatic resume). Conflict model: last message wins per type.
  */
 
 import { useCallback, useRef, useState } from "react";
@@ -10,7 +14,10 @@ import {
   applyMove,
   type NardiState,
 } from "../game/nardiState";
-import { useNardiGameStore } from "../stores/nardiGameStore";
+import {
+  useNardiGameStore,
+  type GameHistoryEntry,
+} from "../stores/nardiGameStore";
 import { SignalingClient } from "../sync/signalingClient";
 import {
   createOfferer,
@@ -91,16 +98,32 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
 
   const applyRemoteState = useCallback((state: NardiState) => {
     isApplyingRemoteRef.current = true;
-    useNardiGameStore.setState({ state, selectedPoint: null });
+    useNardiGameStore.setState({
+      state,
+      selectedPoint: null,
+      gameHistory: [],
+    });
     isApplyingRemoteRef.current = false;
     hasReceivedStateRef.current = true;
   }, []);
 
-  const setStoreToMyTurn = useCallback((next: NardiState) => {
-    isApplyingRemoteRef.current = true;
-    useNardiGameStore.setState({ state: next, selectedPoint: null });
-    isApplyingRemoteRef.current = false;
-  }, []);
+  const setStoreToMyTurn = useCallback(
+    (next: NardiState, appendHistory?: GameHistoryEntry) => {
+      isApplyingRemoteRef.current = true;
+      if (appendHistory) {
+        const { gameHistory } = useNardiGameStore.getState();
+        useNardiGameStore.setState({
+          state: next,
+          selectedPoint: null,
+          gameHistory: [...gameHistory, appendHistory],
+        });
+      } else {
+        useNardiGameStore.setState({ state: next, selectedPoint: null });
+      }
+      isApplyingRemoteRef.current = false;
+    },
+    [],
+  );
 
   const handleMessage = useCallback(
     (raw: string) => {
@@ -113,7 +136,8 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       }
 
       if (msg.type === SyncMessageType.Move) {
-        let state = useNardiGameStore.getState().state;
+        const { state: prevState } = useNardiGameStore.getState();
+        let state = prevState;
         const remotePlayer = remotePlayerRef.current;
         if (remotePlayer !== null && state.turn !== remotePlayer) {
           state = { ...state, turn: remotePlayer };
@@ -124,7 +148,31 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           msg.to,
           msg.usedDiceIndices as [number, number],
         );
-        setStoreToMyTurn(next);
+        const entry: GameHistoryEntry | undefined =
+          msg.isLastMoveOfTurn && state.dice !== null
+            ? {
+                turn: state.turn,
+                dice: state.dice,
+                moves: [
+                  ...state.movesThisTurn,
+                  {
+                    from: msg.from,
+                    to: msg.to,
+                    usedDiceIndices: msg.usedDiceIndices,
+                  },
+                ],
+              }
+            : undefined;
+        setStoreToMyTurn(next, entry);
+        return;
+      }
+
+      if (msg.type === SyncMessageType.RequestState) {
+        const conn = connectionRef.current;
+        if (conn) {
+          const state = useNardiGameStore.getState().state;
+          conn.send({ type: SyncMessageType.State, state });
+        }
         return;
       }
 
@@ -138,9 +186,13 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       }
 
       if (msg.type === SyncMessageType.Pass) {
-        const state = useNardiGameStore.getState().state;
+        const { state } = useNardiGameStore.getState();
         const remotePlayer = remotePlayerRef.current;
         if (remotePlayer === null) return;
+        const entry: GameHistoryEntry =
+          state.dice !== null
+            ? { turn: remotePlayer, dice: state.dice, moves: [] }
+            : { turn: remotePlayer, dice: [0, 0], moves: [] };
         if (state.turn !== remotePlayer) {
           const forced = { ...state, turn: remotePlayer };
           const next: NardiState = {
@@ -150,7 +202,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
             movesThisTurn: [],
             turn: forced.turn === "white" ? "black" : "white",
           };
-          setStoreToMyTurn(next);
+          setStoreToMyTurn(next, entry);
         } else {
           const next: NardiState = {
             ...state,
@@ -159,7 +211,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
             movesThisTurn: [],
             turn: state.turn === "white" ? "black" : "white",
           };
-          setStoreToMyTurn(next);
+          setStoreToMyTurn(next, entry);
         }
       }
     },
@@ -241,10 +293,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       connectionRef.current = conn;
       conn.onOpen(() => {
         setConnectionStatus(ConnectionStatus.Connected);
-        const currentState = useNardiGameStore.getState().state;
-        if (hasReceivedStateRef.current || currentState.phase !== "firstRoll") {
-          conn.send({ type: SyncMessageType.State, state: currentState });
-        }
+        conn.send({ type: SyncMessageType.RequestState });
       });
       conn.onMessage((s) => handleMessage(s));
       conn.onClose(cleanup);

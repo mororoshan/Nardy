@@ -2,7 +2,7 @@
  * WebRTC data channel message types for Nardi state sync.
  */
 
-import type { NardiState } from "../game/nardiState";
+import { applyMove, type NardiState } from "../game/nardiState";
 
 /** Message type discriminator for sync channel. */
 export const SyncMessageType = {
@@ -10,6 +10,7 @@ export const SyncMessageType = {
   Move: "move",
   Dice: "dice",
   Pass: "pass",
+  RequestState: "request_state",
 } as const;
 
 export type SyncMessageTypeValue =
@@ -22,6 +23,25 @@ export interface MovePayload {
   usedDiceIndices: [number, number];
   /** True when this move uses all dice and ends the sender's turn. */
   isLastMoveOfTurn: boolean;
+}
+
+/**
+ * Build a MovePayload for a given move. Use when sending a move over sync
+ * so UI and sync share one place for "isLastMoveOfTurn" logic.
+ */
+export function buildMovePayload(
+  state: NardiState,
+  from: number,
+  to: number,
+  usedDiceIndices: [number, number],
+): MovePayload {
+  const next = applyMove(state, from, to, usedDiceIndices);
+  return {
+    from,
+    to,
+    usedDiceIndices,
+    isLastMoveOfTurn: next.dice === null,
+  };
 }
 
 export interface StateMessage {
@@ -43,11 +63,17 @@ export interface PassMessage {
   type: typeof SyncMessageType.Pass;
 }
 
+/** Sent by joiner when channel opens to request full state from peer. */
+export interface RequestStateMessage {
+  type: typeof SyncMessageType.RequestState;
+}
+
 export type SyncMessage =
   | StateMessage
   | MoveMessage
   | DiceMessage
-  | PassMessage;
+  | PassMessage
+  | RequestStateMessage;
 
 /** State payload is trusted from the peer; no structural NardiState validation. */
 function isStateMessage(o: unknown): o is StateMessage {
@@ -93,6 +119,12 @@ function isPassMessage(o: unknown): o is PassMessage {
   return obj.type === SyncMessageType.Pass;
 }
 
+function isRequestStateMessage(o: unknown): o is RequestStateMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  return obj.type === SyncMessageType.RequestState;
+}
+
 /**
  * Parse and validate a sync message from the data channel. Returns null if invalid.
  */
@@ -118,5 +150,7 @@ export function parseSyncMessage(raw: string): SyncMessage | null {
       dice: [obj.dice[0], obj.dice[1]],
     };
   if (isPassMessage(obj)) return { type: SyncMessageType.Pass };
+  if (isRequestStateMessage(obj))
+    return { type: SyncMessageType.RequestState };
   return null;
 }

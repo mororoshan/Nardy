@@ -5,11 +5,8 @@ import { GameLayout } from "./components/GameLayout";
 import { BackgammonBoard } from "./components/BackgammonBoard";
 import { GameSidebar } from "./components/GameSidebar";
 import { MainMenu } from "./components/MainMenu";
-import {
-  useWebRtcSync,
-  ConnectionStatus,
-  type MovePayload,
-} from "./hooks/useWebRtcSync";
+import { useWebRtcSync } from "./hooks/useWebRtcSync";
+import { useGameSession } from "./session/useGameSession";
 
 extend({
   Container,
@@ -36,24 +33,17 @@ const boardAreaStyle: React.CSSProperties = {
 
 export default function App() {
   const [screen, setScreen] = useState<"menu" | "game">("menu");
+  const [gameMode, setGameMode] = useState<"local" | "multiplayer">("local");
   const [boardContainer, setBoardContainer] = useState<HTMLDivElement | null>(
     null,
   );
   const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
 
-  const {
-    createGame,
-    joinGame,
-    leaveGame,
-    connectionStatus,
-    roomId,
-    localPlayer,
-    sendDice,
-    sendCurrentState,
-    sendMove,
-    sendPass,
-  } = useWebRtcSync();
-  const isMultiplayer = connectionStatus !== ConnectionStatus.Disconnected;
+  const sync = useWebRtcSync();
+  const session = useGameSession(
+    screen === "game" ? gameMode : "local",
+    sync,
+  );
 
   const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
     setBoardContainer(el);
@@ -72,42 +62,32 @@ export default function App() {
     return () => ro.disconnect();
   }, [boardContainer]);
 
-  const onAfterMove = (move: MovePayload) => {
-    if (isMultiplayer) sendMove(move);
-  };
-  const onAfterPass = () => {
-    if (isMultiplayer) sendPass();
-  };
-
   const handleBackToMenu = () => {
-    leaveGame();
+    session.leaveGame();
     setScreen("menu");
-  };
-
-  const copyRoomCode = () => {
-    if (!roomId) return;
-    void navigator.clipboard.writeText(roomId);
   };
 
   if (screen === "menu") {
     return (
       <MainMenu
         onCreateGame={async () => {
-          await createGame();
+          await sync.createGame();
+          setGameMode("multiplayer");
           setScreen("game");
         }}
         onJoinGame={async (roomId) => {
-          await joinGame(roomId);
+          await sync.joinGame(roomId);
+          setGameMode("multiplayer");
           setScreen("game");
         }}
-        onSinglePlayer={() => setScreen("game")}
+        onSinglePlayer={() => {
+          setGameMode("local");
+          setScreen("game");
+        }}
       />
     );
   }
 
-  // Only mount Application when we have the board container ref, so the canvas
-  // is constrained to the board area and does not cover the sidebar (avoid
-  // resizeTo=window on first frame which can paint full viewport).
   const resizeTarget = boardContainer ?? undefined;
 
   return (
@@ -119,27 +99,12 @@ export default function App() {
               width={boardSize.width > 0 ? boardSize.width : undefined}
               height={boardSize.height > 0 ? boardSize.height : undefined}
             >
-              <BackgammonBoard
-                localPlayer={localPlayer}
-                isMultiplayer={isMultiplayer}
-                onAfterMove={isMultiplayer ? onAfterMove : undefined}
-              />
+              <BackgammonBoard session={session} />
             </GameLayout>
           </Application>
         )}
       </div>
-      <GameSidebar
-        onBackToMenu={handleBackToMenu}
-        connectionStatus={connectionStatus}
-        roomId={roomId}
-        onCopyRoomCode={copyRoomCode}
-        localPlayer={localPlayer}
-        isMultiplayer={isMultiplayer}
-        onAfterMove={isMultiplayer ? onAfterMove : undefined}
-        onAfterPass={isMultiplayer ? onAfterPass : undefined}
-        onAfterRoll={isMultiplayer ? sendDice : undefined}
-        onAfterFirstRoll={isMultiplayer ? sendCurrentState : undefined}
-      />
+      <GameSidebar session={session} onBackToMenu={handleBackToMenu} />
     </div>
   );
 }

@@ -1,6 +1,5 @@
 import { Rectangle } from "pixi.js";
 import type { Graphics } from "pixi.js";
-import type { Player } from "../game/direction";
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
@@ -15,25 +14,18 @@ import {
   getPointsWithMovableChips,
   getLegalDestinationsFromPoint,
   getLegalMoves,
-  applyMove,
 } from "../game/nardiState";
-import type { MovePayload } from "../hooks/useWebRtcSync";
+import { buildMovePayload } from "../sync/webrtcSyncTypes";
+import type { NardiGameSession } from "../session/gameSessionTypes";
 
 const PIECE_RADIUS = Math.min(pointW, pointH) * 0.35;
 const HIGHLIGHT_RADIUS = Math.min(pointW, pointH) * 0.42;
 
 export interface BackgammonBoardProps {
-  localPlayer?: Player | null;
-  isMultiplayer?: boolean;
-  /** Called after a move with the applied move payload (for sync). */
-  onAfterMove?: (move: MovePayload) => void;
+  session: NardiGameSession;
 }
 
-export function BackgammonBoard({
-  localPlayer = null,
-  isMultiplayer = false,
-  onAfterMove,
-}: BackgammonBoardProps = {}) {
+export function BackgammonBoard({ session }: BackgammonBoardProps) {
   const { state, selectedPoint, selectPoint, moveTo } = useNardiGame();
   const movablePoints = getPointsWithMovableChips(state);
   const legalDests =
@@ -41,7 +33,9 @@ export function BackgammonBoard({
       ? getLegalDestinationsFromPoint(state, selectedPoint)
       : [];
   const isMyTurn =
-    !isMultiplayer || localPlayer === null || state.turn === localPlayer;
+    session.mode === "local" ||
+    session.localPlayer === null ||
+    state.turn === session.localPlayer;
   const canSelectOrMove =
     state.phase === "playing" && state.dice !== null && isMyTurn;
 
@@ -67,20 +61,14 @@ export function BackgammonBoard({
             (m.to === pointIndex || (m.to === 0 && pointIndex === 0)),
         );
         if (move) {
-          const next = applyMove(
+          const payload = buildMovePayload(
             state,
             move.from,
             move.to,
             move.usedDiceIndices,
           );
-          const payload: MovePayload = {
-            from: move.from,
-            to: move.to,
-            usedDiceIndices: move.usedDiceIndices,
-            isLastMoveOfTurn: next.dice === null,
-          };
           moveTo(pointIndex);
-          onAfterMove?.(payload);
+          session.onAfterMove(payload);
         } else {
           moveTo(pointIndex);
         }

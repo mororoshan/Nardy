@@ -1,6 +1,10 @@
 import type { Player } from "../game/direction";
 import type { NardiState } from "../game/nardiState";
 
+/**
+ * Public game API type. Implemented by the Zustand store (nardiGameStore);
+ * there is no React Context provider — useNardiGame() returns the store typed as this.
+ */
 export interface NardiGameContextValue {
   state: NardiState;
   selectedPoint: number | null;

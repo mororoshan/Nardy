@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import type { Player } from "../game/direction";
 import { useNardiGame } from "../hooks/useNardiGame";
+import { theme } from "../theme";
 import {
   getLegalDestinationsFromPoint,
   getLegalMoves,
-  applyMove,
 } from "../game/nardiState";
+import { buildMovePayload } from "../sync/webrtcSyncTypes";
 import type { MovePayload } from "../hooks/useWebRtcSync";
 
 export interface GameStatusProps {
@@ -73,18 +74,12 @@ export function GameStatus({
               (m) => m.from === selectedPoint && m.to === 0,
             );
             if (move) {
-              const next = applyMove(
+              const payload = buildMovePayload(
                 state,
                 move.from,
                 move.to,
                 move.usedDiceIndices,
               );
-              const payload: MovePayload = {
-                from: move.from,
-                to: move.to,
-                usedDiceIndices: move.usedDiceIndices,
-                isLastMoveOfTurn: next.dice === null,
-              };
               moveTo(0);
               onAfterMove?.(payload);
             } else {
@@ -114,21 +109,30 @@ export function GameStatus({
 
 const styles: Record<string, CSSProperties> = {
   container: {
-    padding: 8,
+    padding: theme.spacing.sm,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    gap: 8,
+    gap: theme.spacing.sm,
   },
-  turn: { margin: 0, color: "#ddd", fontSize: 14 },
-  result: { margin: 0, color: "#fbbf24", fontSize: 16, fontWeight: "bold" },
+  turn: {
+    margin: 0,
+    color: theme.colors.textMuted,
+    fontSize: theme.fontSize.md,
+  },
+  result: {
+    margin: 0,
+    color: theme.colors.warning,
+    fontSize: theme.fontSize.lg,
+    fontWeight: "bold",
+  },
   button: {
     padding: "6px 12px",
     cursor: "pointer",
-    backgroundColor: "#4a5568",
+    backgroundColor: theme.colors.surfaceElevated,
     color: "#fff",
     border: "none",
-    borderRadius: 4,
-    fontSize: 14,
+    borderRadius: theme.borderRadius.sm,
+    fontSize: theme.fontSize.md,
   },
 };
