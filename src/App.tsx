@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Application, extend } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
-import { GameLayout } from "./components/GameLayout";
-import { BackgammonBoard } from "./components/BackgammonBoard";
-import { GameSidebar } from "./components/GameSidebar";
+import { GameLayout } from "./components/layout/GameLayout";
+
 import { MainMenu } from "./components/MainMenu";
 import { useWebRtcSync } from "./hooks/useWebRtcSync";
 import { useGameSession } from "./session/useGameSession";
+import { theme } from "./theme";
+import { BackgammonBoard, GameSidebar } from "./components/game";
 
 extend({
   Container,
@@ -27,7 +28,7 @@ const boardAreaStyle: React.CSSProperties = {
   flex: 1,
   minWidth: 0,
   position: "relative",
-  backgroundColor: "#1a1a2e",
+  backgroundColor: theme.colors.background,
   overflow: "hidden",
 };
 
@@ -40,10 +41,7 @@ export default function App() {
   const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
 
   const sync = useWebRtcSync();
-  const session = useGameSession(
-    screen === "game" ? gameMode : "local",
-    sync,
-  );
+  const session = useGameSession(screen === "game" ? gameMode : "local", sync);
 
   const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
     setBoardContainer(el);
@@ -94,7 +92,10 @@ export default function App() {
     <div style={gameScreenStyle}>
       <div ref={setBoardAreaRef} style={boardAreaStyle}>
         {resizeTarget && (
-          <Application background="#1a1a2e" resizeTo={resizeTarget}>
+          <Application
+            background={theme.colors.background}
+            resizeTo={resizeTarget}
+          >
             <GameLayout
               width={boardSize.width > 0 ? boardSize.width : undefined}
               height={boardSize.height > 0 ? boardSize.height : undefined}

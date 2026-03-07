@@ -1,13 +1,14 @@
 import type { CSSProperties } from "react";
-import type { Player } from "../game/direction";
-import { useNardiGame } from "../hooks/useNardiGame";
-import { theme } from "../theme";
+import type { Player } from "../../game/direction";
+import { useNardiGame } from "../../hooks/useNardiGame";
+import { theme } from "../../theme";
+import { Button } from "../ui";
 import {
   getLegalDestinationsFromPoint,
   getLegalMoves,
-} from "../game/nardiState";
-import { buildMovePayload } from "../sync/webrtcSyncTypes";
-import type { MovePayload } from "../hooks/useWebRtcSync";
+} from "../../game/nardiState";
+import { buildMovePayload } from "../../sync/webrtcSyncTypes";
+import type { MovePayload } from "../../hooks/useWebRtcSync";
 
 export interface GameStatusProps {
   localPlayer?: Player | null;
@@ -46,9 +47,7 @@ export function GameStatus({
           {winner === "white" ? "White" : "Black"} wins —{" "}
           {oynOrMars === "mars" ? "Mars (2)" : "Oyn (1)"}
         </p>
-        <button type="button" style={styles.button} onClick={newGame}>
-          New game
-        </button>
+        <Button onClick={newGame}>New game</Button>
       </div>
     );
   }
@@ -65,9 +64,7 @@ export function GameStatus({
           : `${state.turn === "white" ? "White" : "Black"}'s turn`}
       </p>
       {isMyTurn && selectedPoint !== null && canBearOff && (
-        <button
-          type="button"
-          style={styles.button}
+        <Button
           onClick={() => {
             const moves = getLegalMoves(state);
             const move = moves.find(
@@ -88,12 +85,10 @@ export function GameStatus({
           }}
         >
           Bear off
-        </button>
+        </Button>
       )}
       {isMyTurn && hasNoLegalMoves && (
-        <button
-          type="button"
-          style={styles.button}
+        <Button
           onClick={() => {
             passWhenNoMoves();
             onAfterPass?.();
@@ -101,7 +96,7 @@ export function GameStatus({
           title="No legal moves with remaining die(s); end turn"
         >
           No moves — pass
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -125,14 +120,5 @@ const styles: Record<string, CSSProperties> = {
     color: theme.colors.warning,
     fontSize: theme.fontSize.lg,
     fontWeight: "bold",
-  },
-  button: {
-    padding: "6px 12px",
-    cursor: "pointer",
-    backgroundColor: theme.colors.surfaceElevated,
-    color: "#fff",
-    border: "none",
-    borderRadius: theme.borderRadius.sm,
-    fontSize: theme.fontSize.md,
   },
 };

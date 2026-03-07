@@ -1,7 +1,9 @@
 import type { CSSProperties } from "react";
-import { useNardiGame } from "../hooks/useNardiGame";
-import { useNardiGameStore } from "../stores/nardiGameStore";
-import type { Player } from "../game/direction";
+import { useNardiGame } from "../../hooks/useNardiGame";
+import { useNardiGameStore } from "../../stores/nardiGameStore";
+import type { Player } from "../../game/direction";
+import { theme } from "../../theme";
+import { Button } from "../ui";
 
 export interface DiceDisplayProps {
   localPlayer?: Player | null;
@@ -11,6 +13,32 @@ export interface DiceDisplayProps {
   /** Called after local player rolls in first-roll phase; use to sync state to peer. */
   onAfterFirstRoll?: () => void;
 }
+
+const styles: Record<string, CSSProperties> = {
+  container: {
+    padding: theme.spacing.sm,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: theme.spacing.sm,
+  },
+  text: { margin: 0, color: theme.colors.text, fontSize: theme.fontSize.md },
+  row: { display: "flex", gap: theme.spacing.lg, alignItems: "center" },
+  column: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: theme.spacing.xs,
+  },
+  label: { color: theme.colors.textMuted, fontSize: theme.fontSize.xs },
+  die: { fontSize: 24, fontWeight: "bold", color: theme.colors.text },
+  dice: {
+    fontSize: 20,
+    color: theme.colors.text,
+    minWidth: 60,
+    textAlign: "center",
+  },
+};
 
 export function DiceDisplay({
   localPlayer = null,
@@ -36,32 +64,30 @@ export function DiceDisplay({
             <span style={styles.label}>White</span>
             <span style={styles.die}>{state.firstRollDice.white ?? "—"}</span>
             {showWhiteRoll && (
-              <button
-                type="button"
-                style={styles.button}
+              <Button
+                size="md"
                 onClick={() => {
                   rollForFirstTurn("white");
                   onAfterFirstRoll?.();
                 }}
               >
                 Roll
-              </button>
+              </Button>
             )}
           </div>
           <div style={styles.column}>
             <span style={styles.label}>Black</span>
             <span style={styles.die}>{state.firstRollDice.black ?? "—"}</span>
             {showBlackRoll && (
-              <button
-                type="button"
-                style={styles.button}
+              <Button
+                size="md"
                 onClick={() => {
                   rollForFirstTurn("black");
                   onAfterFirstRoll?.();
                 }}
               >
                 Roll
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -82,9 +108,8 @@ export function DiceDisplay({
           {state.dice ? `${state.dice[0]} – ${state.dice[1]}` : "—"}
         </span>
         {needsRoll && isMyTurn && (
-          <button
-            type="button"
-            style={styles.button}
+          <Button
+            size="md"
             onClick={() => {
               rollDice();
               if (onAfterRoll) {
@@ -94,44 +119,9 @@ export function DiceDisplay({
             }}
           >
             Roll dice
-          </button>
+          </Button>
         )}
       </div>
     </div>
   );
 }
-
-const styles: Record<string, CSSProperties> = {
-  container: {
-    padding: 8,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 8,
-  },
-  text: { margin: 0, color: "#eee", fontSize: 14 },
-  row: { display: "flex", gap: 16, alignItems: "center" },
-  column: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 4,
-  },
-  label: { color: "#aaa", fontSize: 12 },
-  die: { fontSize: 24, fontWeight: "bold", color: "#fff" },
-  dice: {
-    fontSize: 20,
-    color: "#fff",
-    minWidth: 60,
-    textAlign: "center" as const,
-  },
-  button: {
-    padding: "6px 12px",
-    cursor: "pointer",
-    backgroundColor: "#4a5568",
-    color: "#fff",
-    border: "none",
-    borderRadius: 4,
-    fontSize: 14,
-  },
-};

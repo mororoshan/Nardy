@@ -8,15 +8,15 @@ import {
   getPointAtPixel,
   pointW,
   pointH,
-} from "../game/boardGeometry";
-import { useNardiGame } from "../hooks/useNardiGame";
+} from "../../game/boardGeometry";
+import { useNardiGame } from "../../hooks/useNardiGame";
 import {
   getPointsWithMovableChips,
   getLegalDestinationsFromPoint,
   getLegalMoves,
-} from "../game/nardiState";
-import { buildMovePayload } from "../sync/webrtcSyncTypes";
-import type { NardiGameSession } from "../session/gameSessionTypes";
+} from "../../game/nardiState";
+import { buildMovePayload } from "../../sync/webrtcSyncTypes";
+import type { NardiGameSession } from "../../session/gameSessionTypes";
 
 const PIECE_RADIUS = Math.min(pointW, pointH) * 0.35;
 const HIGHLIGHT_RADIUS = Math.min(pointW, pointH) * 0.42;

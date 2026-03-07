@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { useResize } from "../hooks/useResize";
-import { BOARD_WIDTH, BOARD_HEIGHT } from "../game/boardGeometry";
+import { useResize } from "../../hooks/useResize";
+import { BOARD_WIDTH, BOARD_HEIGHT } from "../../game/boardGeometry";
 
-export { BOARD_WIDTH, BOARD_HEIGHT } from "../game/boardGeometry";
+export { BOARD_WIDTH, BOARD_HEIGHT } from "../../game/boardGeometry";
 
 export interface GameLayoutProps {
   children: ReactNode;

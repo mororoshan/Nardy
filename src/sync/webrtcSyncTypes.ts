@@ -150,7 +150,6 @@ export function parseSyncMessage(raw: string): SyncMessage | null {
       dice: [obj.dice[0], obj.dice[1]],
     };
   if (isPassMessage(obj)) return { type: SyncMessageType.Pass };
-  if (isRequestStateMessage(obj))
-    return { type: SyncMessageType.RequestState };
+  if (isRequestStateMessage(obj)) return { type: SyncMessageType.RequestState };
   return null;
 }

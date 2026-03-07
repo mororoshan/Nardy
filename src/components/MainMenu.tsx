@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { theme } from "../theme";
 import { getRoomFromUrl } from "../sync/roomUrl";
+import { Button } from "./ui";
 
 export interface MainMenuProps {
   onCreateGame: () => Promise<void>;
@@ -27,21 +28,11 @@ const titleStyle: CSSProperties = {
   marginBottom: theme.spacing.sm,
 };
 
-const buttonStyle: CSSProperties = {
-  padding: "12px 24px",
-  fontSize: theme.fontSize.lg,
-  backgroundColor: theme.colors.surfaceElevated,
-  color: "#fff",
-  border: "none",
-  borderRadius: theme.borderRadius.md,
-  cursor: "pointer",
-};
-
 const inputStyle: CSSProperties = {
   padding: "10px 14px",
   fontSize: theme.fontSize.lg,
   backgroundColor: theme.colors.surface,
-  color: "#fff",
+  color: theme.colors.text,
   border: `1px solid ${theme.colors.border}`,
   borderRadius: theme.borderRadius.md,
   minWidth: 200,
@@ -108,22 +99,12 @@ export function MainMenu({
   return (
     <div style={containerStyle}>
       <h1 style={titleStyle}>Nardi</h1>
-      <button
-        type="button"
-        style={buttonStyle}
-        onClick={onSinglePlayer}
-        disabled={loading !== null}
-      >
+      <Button size="lg" onClick={onSinglePlayer} disabled={loading !== null}>
         Single player
-      </button>
-      <button
-        type="button"
-        style={buttonStyle}
-        onClick={handleCreate}
-        disabled={loading !== null}
-      >
+      </Button>
+      <Button size="lg" onClick={handleCreate} disabled={loading !== null}>
         {loading === "create" ? "Creating…" : "Create game"}
-      </button>
+      </Button>
       <div style={rowStyle}>
         <input
           type="text"
@@ -133,27 +114,28 @@ export function MainMenu({
           style={inputStyle}
           disabled={loading !== null}
         />
-        <button
-          type="button"
-          style={buttonStyle}
-          onClick={handleJoin}
-          disabled={loading !== null}
-        >
+        <Button size="lg" onClick={handleJoin} disabled={loading !== null}>
           {loading === "join" ? "Joining…" : "Join game"}
-        </button>
+        </Button>
       </div>
       {roomInUrl && (
-        <button
-          type="button"
-          style={{ ...buttonStyle, backgroundColor: theme.colors.accent }}
+        <Button
+          size="lg"
+          style={{ backgroundColor: theme.colors.accent }}
           onClick={handleRejoin}
           disabled={loading !== null}
         >
           {loading === "rejoin" ? "Rejoining…" : `Rejoin game (${roomInUrl})`}
-        </button>
+        </Button>
       )}
       {error && (
-        <p style={{ color: theme.colors.error, margin: 0, fontSize: theme.fontSize.md }}>
+        <p
+          style={{
+            color: theme.colors.error,
+            margin: 0,
+            fontSize: theme.fontSize.md,
+          }}
+        >
           {error}
         </p>
       )}
