@@ -17,8 +17,7 @@ export function GameLayout({
   height: heightProp,
 }: GameLayoutProps) {
   const windowSize = useResize();
-  const width =
-    typeof widthProp === "number" ? widthProp : windowSize.width;
+  const width = typeof widthProp === "number" ? widthProp : windowSize.width;
   const height =
     typeof heightProp === "number" ? heightProp : windowSize.height;
 
