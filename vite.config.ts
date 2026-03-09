@@ -6,8 +6,11 @@ import { defineConfig } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// GitHub Pages serves at https://<user>.github.io/<repo>/
-const base = process.env.NODE_ENV === "production" ? "/web_rtc_nardi/" : "/";
+// GitHub Pages serves at https://<user>.github.io/<repo>/ — base must match repo name.
+// Set in CI via VITE_BASE_PATH; fallback for local prod build.
+const base =
+  process.env.VITE_BASE_PATH ??
+  (process.env.NODE_ENV === "production" ? "/Nardy/" : "/");
 
 const certPath = path.resolve(__dirname, "localhost+1.pem");
 const keyPath = path.resolve(__dirname, "localhost+1-key.pem");
