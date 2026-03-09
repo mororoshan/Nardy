@@ -31,14 +31,13 @@ import {
   type MovePayload,
 } from "../sync/webrtcSyncTypes";
 
-/** Use same host as the page so phone/other devices reach your machine; wss when page is HTTPS. Override with VITE_SIGNALING_URL (e.g. ws://172.19.0.2:8080). */
-const SIGNALING_PORT = 8080;
+/** Default: hosted signaling server on Render. Override with VITE_SIGNALING_URL for local dev (e.g. ws://localhost:8080). */
+const DEFAULT_SIGNALING_URL = "wss://signal-nardy.onrender.com";
 function getSignalingUrl(): string {
   const envUrl = import.meta.env.VITE_SIGNALING_URL;
   if (envUrl && typeof envUrl === "string") return envUrl.replace(/\/$/, "");
   if (typeof window === "undefined") return "ws://localhost:8080";
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.hostname}:${SIGNALING_PORT}`;
+  return DEFAULT_SIGNALING_URL;
 }
 
 /** Connection status for UI. */

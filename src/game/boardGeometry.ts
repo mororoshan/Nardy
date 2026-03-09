@@ -8,6 +8,8 @@
 
 export const BOARD_WIDTH = 700;
 export const BOARD_HEIGHT = 500;
+/** Aspect ratio width/height for CSS aspect-ratio. */
+export const BOARD_ASPECT_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
 export const BAR_WIDTH = 24;
 
 const halfW = (BOARD_WIDTH - BAR_WIDTH) / 2;

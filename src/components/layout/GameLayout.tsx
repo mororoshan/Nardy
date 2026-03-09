@@ -18,14 +18,18 @@ export function GameLayout({
 }: GameLayoutProps) {
   const windowSize = useResize();
   const width =
-    widthProp != null && widthProp > 0 ? widthProp : windowSize.width;
+    typeof widthProp === "number" ? widthProp : windowSize.width;
   const height =
-    heightProp != null && heightProp > 0 ? heightProp : windowSize.height;
-  const x = Math.max(0, (width - BOARD_WIDTH) / 2);
-  const y = Math.max(0, (height - BOARD_HEIGHT) / 2);
+    typeof heightProp === "number" ? heightProp : windowSize.height;
+
+  const scale = Math.min(width / BOARD_WIDTH, height / BOARD_HEIGHT);
+  const scaledW = BOARD_WIDTH * scale;
+  const scaledH = BOARD_HEIGHT * scale;
+  const x = (width - scaledW) / 2;
+  const y = (height - scaledH) / 2;
 
   return (
-    <pixiContainer x={x} y={y}>
+    <pixiContainer x={x} y={y} scale={scale}>
       {children}
     </pixiContainer>
   );

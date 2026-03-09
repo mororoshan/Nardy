@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Application, extend } from "@pixi/react";
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 import { GameLayout } from "./components/layout/GameLayout";
+import { GameScreenLayout } from "./components/layout/GameScreenLayout";
+import { BOARD_ASPECT_RATIO } from "./game/boardGeometry";
 
 import { MainMenu } from "./components/MainMenu";
 import { useWebRtcSync } from "./hooks/useWebRtcSync";
@@ -16,20 +18,17 @@ extend({
   Text,
 });
 
-const gameScreenStyle: React.CSSProperties = {
-  display: "flex",
-  width: "100vw",
-  height: "100vh",
-  position: "relative",
-  overflow: "hidden",
-};
-
-const boardAreaStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: 0,
+const boardWrapperStyle: React.CSSProperties = {
+  width: "100%",
+  height: "100%",
+  aspectRatio: BOARD_ASPECT_RATIO,
   position: "relative",
   backgroundColor: theme.colors.background,
   overflow: "hidden",
+  /** Fit within slot while keeping aspect ratio (like object-fit: contain). */
+  maxWidth: "100%",
+  maxHeight: "100%",
+  margin: "auto",
 };
 
 export default function App() {
@@ -88,24 +87,29 @@ export default function App() {
 
   const resizeTarget = boardContainer ?? undefined;
 
-  return (
-    <div style={gameScreenStyle}>
-      <div ref={setBoardAreaRef} style={boardAreaStyle}>
-        {resizeTarget && (
-          <Application
-            background={theme.colors.background}
-            resizeTo={resizeTarget}
-          >
-            <GameLayout
-              width={boardSize.width > 0 ? boardSize.width : undefined}
-              height={boardSize.height > 0 ? boardSize.height : undefined}
-            >
-              <BackgammonBoard session={session} />
-            </GameLayout>
-          </Application>
-        )}
-      </div>
-      <GameSidebar session={session} onBackToMenu={handleBackToMenu} />
+  const hasSize = boardSize.width > 0 && boardSize.height > 0;
+  const boardNode = (
+    <div ref={setBoardAreaRef} style={boardWrapperStyle}>
+      {resizeTarget && hasSize && (
+        <Application
+          background={theme.colors.background}
+          resizeTo={resizeTarget}
+        >
+          <GameLayout width={boardSize.width} height={boardSize.height}>
+            <BackgammonBoard session={session} />
+          </GameLayout>
+        </Application>
+      )}
     </div>
+  );
+
+  return (
+    <GameScreenLayout
+      header="Nardi"
+      board={boardNode}
+      sidebar={
+        <GameSidebar session={session} onBackToMenu={handleBackToMenu} />
+      }
+    />
   );
 }
