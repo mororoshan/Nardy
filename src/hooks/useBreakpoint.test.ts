@@ -1,7 +1,9 @@
 import { renderHook, act } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { useBreakpoint } from "./useBreakpoint";
 import { LAYOUT_BREAKPOINT } from "../layout/breakpoint";
+
+let originalInnerWidth: number;
 
 function setWindowWidth(width: number) {
   Object.defineProperty(window, "innerWidth", {
@@ -12,6 +14,18 @@ function setWindowWidth(width: number) {
 }
 
 describe("useBreakpoint", () => {
+  beforeEach(() => {
+    originalInnerWidth = window.innerWidth;
+  });
+
+  afterEach(() => {
+    Object.defineProperty(window, "innerWidth", {
+      writable: true,
+      configurable: true,
+      value: originalInnerWidth,
+    });
+  });
+
   it("returns isNarrow true when width is below breakpoint", () => {
     setWindowWidth(LAYOUT_BREAKPOINT - 1);
     const { result } = renderHook(() => useBreakpoint());
@@ -34,5 +48,20 @@ describe("useBreakpoint", () => {
       window.dispatchEvent(new Event("resize"));
     });
     expect(result.current.isNarrow).toBe(true);
+  });
+
+  it("uses custom breakpoint when provided", () => {
+    const customBreakpoint = 400;
+    setWindowWidth(customBreakpoint - 1);
+    const { result: resultNarrow } = renderHook(() =>
+      useBreakpoint(customBreakpoint),
+    );
+    expect(resultNarrow.current.isNarrow).toBe(true);
+
+    setWindowWidth(customBreakpoint);
+    const { result: resultWide } = renderHook(() =>
+      useBreakpoint(customBreakpoint),
+    );
+    expect(resultWide.current.isNarrow).toBe(false);
   });
 });

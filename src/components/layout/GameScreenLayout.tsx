@@ -43,6 +43,7 @@ const mainRowStyleNarrow: CSSProperties = {
 const boardSlotStyle: CSSProperties = {
   flex: 1,
   minWidth: 0,
+  minHeight: 0,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
