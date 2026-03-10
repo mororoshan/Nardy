@@ -6,6 +6,7 @@ import { GameScreenLayout } from "./components/layout/GameScreenLayout";
 import { BOARD_ASPECT_RATIO } from "./game/boardGeometry";
 
 import { MainMenu } from "./components/MainMenu";
+import { useBreakpoint } from "./hooks/useBreakpoint";
 import { useWebRtcSync } from "./hooks/useWebRtcSync";
 import { useGameSession } from "./session/useGameSession";
 import { theme } from "./theme";
@@ -41,6 +42,7 @@ export default function App() {
 
   const sync = useWebRtcSync();
   const session = useGameSession(screen === "game" ? gameMode : "local", sync);
+  const { isNarrow } = useBreakpoint();
 
   const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
     setBoardContainer(el);
@@ -108,7 +110,11 @@ export default function App() {
       header="Nardi"
       board={boardNode}
       sidebar={
-        <GameSidebar session={session} onBackToMenu={handleBackToMenu} />
+        <GameSidebar
+          session={session}
+          onBackToMenu={handleBackToMenu}
+          isNarrow={isNarrow}
+        />
       }
     />
   );

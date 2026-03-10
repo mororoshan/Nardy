@@ -12,19 +12,37 @@ const SIDEBAR_WIDTH = 300;
 export interface GameSidebarProps {
   session: NardiGameSession;
   onBackToMenu: () => void;
+  isNarrow?: boolean;
 }
 
 const sidebarStyle: CSSProperties = {
   width: SIDEBAR_WIDTH,
   minWidth: SIDEBAR_WIDTH,
-  height: "100%",
   position: "relative",
   zIndex: 1,
   backgroundColor: theme.colors.sidebarBg,
   borderLeft: `1px solid ${theme.colors.sidebarBorder}`,
   display: "flex",
   flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
   overflow: "hidden",
+};
+
+const sidebarStyleNarrow: CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  flexShrink: 0,
+  position: "relative",
+  zIndex: 1,
+  backgroundColor: theme.colors.sidebarBg,
+  borderTop: `1px solid ${theme.colors.sidebarBorder}`,
+  borderLeft: "none",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  overflow: "auto",
 };
 
 const headerStyle: CSSProperties = {
@@ -52,11 +70,15 @@ const roomLabelStyle: CSSProperties = {
   color: theme.colors.textMuted,
 };
 
-export function GameSidebar({ session, onBackToMenu }: GameSidebarProps) {
+export function GameSidebar({
+  session,
+  onBackToMenu,
+  isNarrow = false,
+}: GameSidebarProps) {
   const [activeTab, setActiveTab] = useState<"moves" | "controls">("controls");
 
   return (
-    <aside style={sidebarStyle}>
+    <aside style={isNarrow ? sidebarStyleNarrow : sidebarStyle}>
       <div style={headerStyle}>
         <Button
           variant="secondary"
