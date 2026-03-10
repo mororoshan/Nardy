@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { CSSProperties } from "react";
+import { useBreakpoint } from "../../hooks/useBreakpoint";
 import { theme } from "../../theme";
 
 export interface GameScreenLayoutProps {
@@ -34,6 +35,11 @@ const mainRowStyle: CSSProperties = {
   minHeight: 0,
 };
 
+const mainRowStyleNarrow: CSSProperties = {
+  ...mainRowStyle,
+  flexDirection: "column",
+};
+
 const boardSlotStyle: CSSProperties = {
   flex: 1,
   minWidth: 0,
@@ -62,10 +68,11 @@ export function GameScreenLayout({
   sidebar,
   footer,
 }: GameScreenLayoutProps) {
+  const { isNarrow } = useBreakpoint();
   return (
     <div style={rootStyle}>
       <header style={headerStyle}>{header ?? "Nardi"}</header>
-      <div style={mainRowStyle}>
+      <div style={isNarrow ? mainRowStyleNarrow : mainRowStyle}>
         <div style={boardSlotStyle}>{board}</div>
         {sidebar}
       </div>

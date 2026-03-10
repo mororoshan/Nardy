@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { LAYOUT_BREAKPOINT } from "../layout/breakpoint";
 
-export function useBreakpoint(
-  breakpoint: number = LAYOUT_BREAKPOINT,
-): { isNarrow: boolean } {
+export function useBreakpoint(breakpoint: number = LAYOUT_BREAKPOINT): {
+  isNarrow: boolean;
+} {
   const [width, setWidth] = useState(
     typeof window !== "undefined" ? window.innerWidth : breakpoint + 1,
   );
