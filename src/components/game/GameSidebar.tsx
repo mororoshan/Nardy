@@ -6,6 +6,7 @@ import { Button, TabBar } from "../ui";
 import { MoveHistoryList } from "./MoveHistoryList";
 import { DiceDisplay } from "./DiceDisplay";
 import { GameStatus } from "./GameStatus";
+import { QuickChat } from "./QuickChat";
 
 const SIDEBAR_WIDTH = 300;
 
@@ -75,7 +76,12 @@ export function GameSidebar({
   onBackToMenu,
   isNarrow = false,
 }: GameSidebarProps) {
-  const [activeTab, setActiveTab] = useState<"moves" | "controls">("controls");
+  const [activeTab, setActiveTab] = useState<"moves" | "controls" | "chat">(
+    "controls",
+  );
+
+  const chatEnabled =
+    session.mode === "multiplayer" && session.connectionStatus === "connected";
 
   return (
     <aside style={isNarrow ? sidebarStyleNarrow : sidebarStyle}>
@@ -113,12 +119,15 @@ export function GameSidebar({
         tabs={[
           { id: "moves", label: "Moves" },
           { id: "controls", label: "Controls" },
+          { id: "chat", label: "Chat" },
         ]}
         activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as "moves" | "controls")}
+        onSelect={(id) => setActiveTab(id as "moves" | "controls" | "chat")}
       >
         {activeTab === "moves" ? (
           <MoveHistoryList />
+        ) : activeTab === "chat" ? (
+          <QuickChat onSend={session.sendChat} enabled={chatEnabled} />
         ) : (
           <div
             style={{

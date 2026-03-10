@@ -11,6 +11,7 @@ import { useWebRtcSync } from "./hooks/useWebRtcSync";
 import { useGameSession } from "./session/useGameSession";
 import { theme } from "./theme";
 import { BackgammonBoard, GameSidebar } from "./components/game";
+import { useChatStore } from "./stores/chatStore";
 
 extend({
   Container,
@@ -62,6 +63,7 @@ export default function App() {
   }, [boardContainer]);
 
   const handleBackToMenu = () => {
+    useChatStore.getState().clearMessages();
     session.leaveGame();
     setScreen("menu");
   };

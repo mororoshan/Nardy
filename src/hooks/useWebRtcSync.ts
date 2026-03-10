@@ -18,6 +18,7 @@ import {
   useNardiGameStore,
   type GameHistoryEntry,
 } from "../stores/nardiGameStore";
+import { useChatStore } from "../stores/chatStore";
 import { SignalingClient } from "../sync/signalingClient";
 import {
   createOfferer,
@@ -67,6 +68,8 @@ export interface UseWebRtcSyncResult {
   sendMove: (move: MovePayload) => void;
   /** Call when user ends turn with no legal moves (pass). */
   sendPass: () => void;
+  /** Send a quickchat message (multiplayer only; no-op when disconnected). */
+  sendChat: (text: string) => void;
 }
 
 export function useWebRtcSync(): UseWebRtcSyncResult {
@@ -181,6 +184,11 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         isApplyingRemoteRef.current = true;
         useNardiGameStore.setState({ state: next });
         isApplyingRemoteRef.current = false;
+        return;
+      }
+
+      if (msg.type === SyncMessageType.Chat) {
+        useChatStore.getState().addMessage("remote", msg.text);
         return;
       }
 
@@ -342,6 +350,11 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     if (conn) conn.send({ type: SyncMessageType.Pass });
   }, []);
 
+  const sendChat = useCallback((text: string) => {
+    const conn = connectionRef.current;
+    if (conn) conn.send({ type: SyncMessageType.Chat, text });
+  }, []);
+
   const localPlayer: Player | null =
     isCreator === true ? "white" : isCreator === false ? "black" : null;
 
@@ -360,5 +373,6 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     sendCurrentState,
     sendMove,
     sendPass,
+    sendChat,
   };
 }

@@ -7,3 +7,5 @@ export type { GameSidebarProps } from "./GameSidebar";
 export { GameStatus } from "./GameStatus";
 export type { GameStatusProps } from "./GameStatus";
 export { MoveHistoryList } from "./MoveHistoryList";
+export { QuickChat } from "./QuickChat";
+export type { QuickChatProps } from "./QuickChat";

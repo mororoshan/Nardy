@@ -11,6 +11,7 @@ export const SyncMessageType = {
   Dice: "dice",
   Pass: "pass",
   RequestState: "request_state",
+  Chat: "chat",
 } as const;
 
 export type SyncMessageTypeValue =
@@ -68,12 +69,22 @@ export interface RequestStateMessage {
   type: typeof SyncMessageType.RequestState;
 }
 
+/** Max length for quickchat text over the data channel. */
+const MAX_CHAT_LENGTH = 500;
+
+/** Quickchat text sent over the data channel. */
+export interface ChatMessage {
+  type: typeof SyncMessageType.Chat;
+  text: string;
+}
+
 export type SyncMessage =
   | StateMessage
   | MoveMessage
   | DiceMessage
   | PassMessage
-  | RequestStateMessage;
+  | RequestStateMessage
+  | ChatMessage;
 
 /** State payload is trusted from the peer; no structural NardiState validation. */
 function isStateMessage(o: unknown): o is StateMessage {
@@ -125,6 +136,16 @@ function isRequestStateMessage(o: unknown): o is RequestStateMessage {
   return obj.type === SyncMessageType.RequestState;
 }
 
+function isChatMessage(o: unknown): o is ChatMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  return (
+    obj.type === SyncMessageType.Chat &&
+    typeof obj.text === "string" &&
+    (obj.text as string).length <= MAX_CHAT_LENGTH
+  );
+}
+
 /**
  * Parse and validate a sync message from the data channel. Returns null if invalid.
  */
@@ -151,5 +172,10 @@ export function parseSyncMessage(raw: string): SyncMessage | null {
     };
   if (isPassMessage(obj)) return { type: SyncMessageType.Pass };
   if (isRequestStateMessage(obj)) return { type: SyncMessageType.RequestState };
+  if (isChatMessage(obj))
+    return {
+      type: SyncMessageType.Chat,
+      text: String(obj.text).slice(0, MAX_CHAT_LENGTH),
+    };
   return null;
 }

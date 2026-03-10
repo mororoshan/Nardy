@@ -69,7 +69,9 @@ export function MainMenu({
     ...inputStyle,
     ...(touchFriendly && { minHeight: MIN_TOUCH_HEIGHT }),
   };
-  const touchTargetStyle = touchFriendly ? { minHeight: MIN_TOUCH_HEIGHT } : undefined;
+  const touchTargetStyle = touchFriendly
+    ? { minHeight: MIN_TOUCH_HEIGHT }
+    : undefined;
 
   const handleCreate = async () => {
     setError(null);

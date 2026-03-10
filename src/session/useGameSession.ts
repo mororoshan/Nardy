@@ -18,6 +18,7 @@ const LOCAL_SESSION: NardiGameSession = {
   onAfterFirstRoll: () => {},
   leaveGame: () => {},
   copyRoomCode: () => {},
+  sendChat: () => {},
 };
 
 export function useGameSession(
@@ -39,6 +40,7 @@ export function useGameSession(
       copyRoomCode: () => {
         if (sync.roomId) void navigator.clipboard.writeText(sync.roomId);
       },
+      sendChat: sync.sendChat,
     };
   }, [
     mode,
@@ -50,5 +52,6 @@ export function useGameSession(
     sync.sendDice,
     sync.sendCurrentState,
     sync.leaveGame,
+    sync.sendChat,
   ]);
 }

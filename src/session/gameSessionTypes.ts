@@ -18,4 +18,6 @@ export interface NardiGameSession {
   onAfterFirstRoll: () => void;
   leaveGame: () => void;
   copyRoomCode: () => void;
+  /** Send quickchat text (multiplayer only; no-op in local). */
+  sendChat: (text: string) => void;
 }

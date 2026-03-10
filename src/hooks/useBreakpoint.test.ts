@@ -1,7 +1,7 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { useBreakpoint } from "./useBreakpoint";
 import { LAYOUT_BREAKPOINT } from "../layout/breakpoint";
+import { useBreakpoint } from "./useBreakpoint";
 
 let originalInnerWidth: number;
 
