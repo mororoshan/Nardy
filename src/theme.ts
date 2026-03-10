@@ -35,4 +35,6 @@ export const theme = {
     md: 14,
     lg: 16,
   },
+  /** Duration in ms for piece move animation. */
+  moveAnimationMs: 280,
 } as const;

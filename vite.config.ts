@@ -3,7 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-/// <reference types="vitest" />
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -17,7 +16,10 @@ const certPath = path.resolve(__dirname, "localhost+1.pem");
 const keyPath = path.resolve(__dirname, "localhost+1-key.pem");
 const hasHttps = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
-// https://vite.dev/config/
+// https://vite.dev/config/ (test block is for Vitest; Vite ignores unknown keys)
+type ViteConfigWithTest = import("vite").UserConfigExport & {
+  test?: { environment?: string; globals?: boolean };
+};
 export default defineConfig({
   base,
   plugins: [react()],
@@ -34,4 +36,4 @@ export default defineConfig({
       },
     }),
   },
-});
+} as ViteConfigWithTest);

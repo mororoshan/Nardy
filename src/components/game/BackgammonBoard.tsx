@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Rectangle } from "pixi.js";
 import type { Graphics } from "pixi.js";
 import {
@@ -19,6 +20,8 @@ import {
 import type { NardiState } from "../../game/nardiState";
 import { buildMovePayload } from "../../sync/webrtcSyncTypes";
 import type { NardiGameSession } from "../../session/gameSessionTypes";
+import { useNardiGameStore, type LastMove } from "../../stores/nardiGameStore";
+import { theme } from "../../theme";
 
 const PIECE_RADIUS = Math.min(pointW, pointH) * 0.35;
 const HIGHLIGHT_RADIUS = Math.min(pointW, pointH) * 0.42;
@@ -98,15 +101,29 @@ function PointLabels() {
   );
 }
 
-/** White and black pieces from game state. */
-function BoardPieces({ state }: { state: NardiState }) {
+/** White and black pieces from game state. Optional lastMove + progress for animating one piece. */
+function BoardPieces({
+  state,
+  lastMove,
+  moveProgress,
+}: {
+  state: NardiState;
+  lastMove: LastMove | null;
+  moveProgress: number;
+}) {
+  const animating = lastMove && lastMove.to !== 0 && moveProgress < 1;
+
   return (
     <pixiGraphics
       draw={(g: Graphics) => {
         g.clear();
         for (let i = 1; i <= 24; i++) {
-          const whiteCount = state.whitePoints[i] ?? 0;
-          const blackCount = state.blackPoints[i] ?? 0;
+          let whiteCount = state.whitePoints[i] ?? 0;
+          let blackCount = state.blackPoints[i] ?? 0;
+          if (animating && lastMove && i === lastMove.to) {
+            if (lastMove.player === "white") whiteCount--;
+            else blackCount--;
+          }
           const { x, y } = pointIndexToPixelCenter(i);
           const stack = whiteCount + blackCount;
           const maxStack = Math.max(stack, 1);
@@ -127,27 +144,54 @@ function BoardPieces({ state }: { state: NardiState }) {
             idx++;
           }
         }
+        if (animating && lastMove) {
+          const start = pointIndexToPixelCenter(lastMove.from);
+          const end = pointIndexToPixelCenter(lastMove.to);
+          const x = start.x + (end.x - start.x) * moveProgress;
+          const y = start.y + (end.y - start.y) * moveProgress;
+          const isWhite = lastMove.player === "white";
+          g.circle(x, y, PIECE_RADIUS)
+            .fill({ color: isWhite ? 0xf5f5dc : 0x2d2d2d })
+            .stroke({
+              width: 1,
+              color: isWhite ? 0x8b7355 : 0x1a1a1a,
+            });
+        }
       }}
     />
   );
 }
 
-/** Movable-point, selected-point, and legal-destination highlights. */
+/** Movable-point, selected-point, legal-destination, and last-move highlights. */
 function BoardHighlights({
   movablePoints,
   selectedPoint,
   legalDests,
   canSelectOrMove,
+  lastMove,
 }: {
   movablePoints: number[];
   selectedPoint: number | null;
   legalDests: number[];
   canSelectOrMove: boolean;
+  lastMove: LastMove | null;
 }) {
   return (
     <pixiGraphics
       draw={(g: Graphics) => {
         g.clear();
+        if (lastMove) {
+          const fromPos = pointIndexToPixelCenter(lastMove.from);
+          g.circle(fromPos.x, fromPos.y, HIGHLIGHT_RADIUS)
+            .fill({ color: 0x818cf8, alpha: 0.35 })
+            .stroke({ width: 2, color: 0x6366f1 });
+          if (lastMove.to !== 0) {
+            const toPos = pointIndexToPixelCenter(lastMove.to);
+            g.circle(toPos.x, toPos.y, HIGHLIGHT_RADIUS)
+              .fill({ color: 0x818cf8, alpha: 0.35 })
+              .stroke({ width: 2, color: 0x6366f1 });
+          }
+        }
         if (canSelectOrMove) {
           for (const p of movablePoints) {
             const { x, y } = pointIndexToPixelCenter(p);
@@ -178,8 +222,41 @@ export interface BackgammonBoardProps {
   session: NardiGameSession;
 }
 
+const LAST_MOVE_HIGHLIGHT_MS = 2000;
+
 export function BackgammonBoard({ session }: BackgammonBoardProps) {
   const { state, selectedPoint, selectPoint, moveTo } = useNardiGame();
+  const lastMove = useNardiGameStore((s) => s.lastMove);
+  const clearLastMove = useNardiGameStore((s) => s.clearLastMove);
+  const [moveProgress, setMoveProgress] = useState(0);
+  const animRef = useRef<number | null>(null);
+  const clearRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!lastMove) {
+      setMoveProgress(0);
+      return;
+    }
+    const durationMs = theme.moveAnimationMs;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / durationMs, 1);
+      setMoveProgress(progress);
+      if (progress < 1) {
+        animRef.current = requestAnimationFrame(tick);
+      }
+    };
+    animRef.current = requestAnimationFrame(tick);
+    clearRef.current = setTimeout(() => {
+      clearLastMove();
+    }, LAST_MOVE_HIGHLIGHT_MS);
+    return () => {
+      if (animRef.current != null) cancelAnimationFrame(animRef.current);
+      if (clearRef.current != null) clearTimeout(clearRef.current);
+    };
+  }, [lastMove, clearLastMove]);
+
   const movablePoints = getPointsWithMovableChips(state);
   const legalDests =
     selectedPoint !== null
@@ -244,12 +321,17 @@ export function BackgammonBoard({ session }: BackgammonBoardProps) {
     >
       <BoardSurface />
       <PointLabels />
-      <BoardPieces state={state} />
+      <BoardPieces
+        state={state}
+        lastMove={lastMove}
+        moveProgress={moveProgress}
+      />
       <BoardHighlights
         movablePoints={movablePoints}
         selectedPoint={selectedPoint}
         legalDests={legalDests}
         canSelectOrMove={canSelectOrMove}
+        lastMove={lastMove}
       />
     </BoardHitArea>
   );

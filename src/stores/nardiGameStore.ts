@@ -25,10 +25,19 @@ export interface GameHistoryEntry {
   moves: MoveThisTurn[];
 }
 
+/** Last move applied (for animation and highlight). Cleared after animation. */
+export interface LastMove {
+  from: number;
+  to: number;
+  player: Player;
+}
+
 export interface NardiGameStore {
   state: NardiState;
   selectedPoint: number | null;
   gameHistory: GameHistoryEntry[];
+  /** Last move applied; used for move animation and last-move highlight. */
+  lastMove: LastMove | null;
   rollForFirstTurn: (player: Player) => number;
   rollDice: () => void;
   selectPoint: (pointIndex: number | null) => void;
@@ -36,12 +45,17 @@ export interface NardiGameStore {
   /** End turn when dice are rolled but there are no legal moves (e.g. one die used, other blocked). */
   passWhenNoMoves: () => void;
   newGame: () => void;
+  /** Set last move (called after applyMove for animation). */
+  setLastMove: (from: number, to: number, player: Player) => void;
+  /** Clear last move (e.g. after animation ends). */
+  clearLastMove: () => void;
 }
 
 export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
   state: createInitialState(),
   selectedPoint: null,
   gameHistory: [],
+  lastMove: null,
 
   rollForFirstTurn: (player: Player) => {
     const value = rollDie();
@@ -101,7 +115,16 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
       state: next,
       selectedPoint: null,
       gameHistory: entry ? [...gameHistory, entry] : gameHistory,
+      lastMove: { from: move.from, to: move.to, player: state.turn },
     });
+  },
+
+  setLastMove: (from, to, player) => {
+    set({ lastMove: { from, to, player } });
+  },
+
+  clearLastMove: () => {
+    set({ lastMove: null });
   },
 
   passWhenNoMoves: () => {
@@ -132,6 +155,11 @@ export const useNardiGameStore = create<NardiGameStore>()((set, get) => ({
   },
 
   newGame: () => {
-    set({ state: createInitialState(), selectedPoint: null, gameHistory: [] });
+    set({
+      state: createInitialState(),
+      selectedPoint: null,
+      gameHistory: [],
+      lastMove: null,
+    });
   },
 }));

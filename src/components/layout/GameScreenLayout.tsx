@@ -8,6 +8,8 @@ export interface GameScreenLayoutProps {
   board: ReactNode;
   sidebar: ReactNode;
   footer?: ReactNode;
+  /** Optional overlay (e.g. game-end screen) rendered on top of main content. */
+  overlay?: ReactNode;
 }
 
 const rootStyle: CSSProperties = {
@@ -17,6 +19,7 @@ const rootStyle: CSSProperties = {
   height: "100vh",
   overflow: "hidden",
   backgroundColor: theme.colors.background,
+  position: "relative",
 };
 
 const headerStyle: CSSProperties = {
@@ -50,6 +53,16 @@ const boardSlotStyle: CSSProperties = {
   position: "relative",
 };
 
+const overlaySlotStyle: CSSProperties = {
+  position: "absolute",
+  inset: 0,
+  pointerEvents: "auto",
+  zIndex: 10,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
 const footerStyle: CSSProperties = {
   flexShrink: 0,
   padding: theme.spacing.xs,
@@ -68,6 +81,7 @@ export function GameScreenLayout({
   board,
   sidebar,
   footer,
+  overlay,
 }: GameScreenLayoutProps) {
   const { isNarrow } = useBreakpoint();
   return (
@@ -78,6 +92,7 @@ export function GameScreenLayout({
         {sidebar}
       </div>
       {footer != null && <footer style={footerStyle}>{footer}</footer>}
+      {overlay != null && <div style={overlaySlotStyle}>{overlay}</div>}
     </div>
   );
 }

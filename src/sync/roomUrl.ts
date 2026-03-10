@@ -33,3 +33,13 @@ export function clearRoomFromUrl(): void {
   url.searchParams.delete(ROOM_PARAM);
   window.history.replaceState(null, "", url.toString());
 }
+
+/**
+ * Builds the full URL to join a room (same origin + ?room=roomId).
+ * Used for sharing and QR so another device can open and land on join with room pre-filled.
+ */
+export function getJoinUrl(roomId: string): string {
+  const url = new URL(window.location.href);
+  url.searchParams.set(ROOM_PARAM, roomId.trim());
+  return url.toString();
+}

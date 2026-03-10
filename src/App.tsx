@@ -10,8 +10,10 @@ import { useBreakpoint } from "./hooks/useBreakpoint";
 import { useWebRtcSync } from "./hooks/useWebRtcSync";
 import { useGameSession } from "./session/useGameSession";
 import { theme } from "./theme";
-import { BackgammonBoard, GameSidebar } from "./components/game";
+import { BackgammonBoard, GameEndScreen, GameSidebar } from "./components/game";
 import { useChatStore } from "./stores/chatStore";
+import { useNardiGameStore } from "./stores/nardiGameStore";
+import { clearLastRoom } from "./sync/lastRoomStorage";
 
 extend({
   Container,
@@ -44,6 +46,8 @@ export default function App() {
   const sync = useWebRtcSync();
   const session = useGameSession(screen === "game" ? gameMode : "local", sync);
   const { isNarrow } = useBreakpoint();
+  const gamePhase = useNardiGameStore((s) => s.state.phase);
+  const gameOverResult = useNardiGameStore((s) => s.state.gameOverResult);
 
   const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
     setBoardContainer(el);
@@ -82,7 +86,13 @@ export default function App() {
           setGameMode("multiplayer");
           setScreen("game");
         }}
+        onRejoinAsHost={async (roomId) => {
+          await sync.createGame(roomId);
+          setGameMode("multiplayer");
+          setScreen("game");
+        }}
         onSinglePlayer={() => {
+          clearLastRoom();
           setGameMode("local");
           setScreen("game");
         }}
@@ -108,6 +118,15 @@ export default function App() {
     </div>
   );
 
+  const gameEndOverlay =
+    gamePhase === "gameOver" && gameOverResult ? (
+      <GameEndScreen
+        winner={gameOverResult.winner}
+        oynOrMars={gameOverResult.oynOrMars}
+        onBackToMenu={handleBackToMenu}
+      />
+    ) : null;
+
   return (
     <GameScreenLayout
       header="Nardi"
@@ -119,6 +138,7 @@ export default function App() {
           isNarrow={isNarrow}
         />
       }
+      overlay={gameEndOverlay}
     />
   );
 }

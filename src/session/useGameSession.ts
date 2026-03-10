@@ -7,9 +7,12 @@ import { ConnectionStatus } from "../hooks/useWebRtcSync";
 import type { UseWebRtcSyncResult } from "../hooks/useWebRtcSync";
 import type { NardiGameSession } from "./gameSessionTypes";
 
+import { ConnectionQuality } from "../hooks/useWebRtcSync";
+
 const LOCAL_SESSION: NardiGameSession = {
   mode: "local",
   connectionStatus: ConnectionStatus.Connected,
+  connectionQuality: ConnectionQuality.Offline,
   roomId: null,
   localPlayer: null,
   onAfterMove: () => {},
@@ -19,6 +22,7 @@ const LOCAL_SESSION: NardiGameSession = {
   leaveGame: () => {},
   copyRoomCode: () => {},
   sendChat: () => {},
+  canRejoin: false,
 };
 
 export function useGameSession(
@@ -30,6 +34,7 @@ export function useGameSession(
     return {
       mode: "multiplayer",
       connectionStatus: sync.connectionStatus,
+      connectionQuality: sync.connectionQuality,
       roomId: sync.roomId,
       localPlayer: sync.localPlayer,
       onAfterMove: sync.sendMove,
@@ -41,10 +46,13 @@ export function useGameSession(
         if (sync.roomId) void navigator.clipboard.writeText(sync.roomId);
       },
       sendChat: sync.sendChat,
+      onRejoin: sync.rejoinFromLastRoom,
+      canRejoin: sync.canRejoin,
     };
   }, [
     mode,
     sync.connectionStatus,
+    sync.connectionQuality,
     sync.roomId,
     sync.localPlayer,
     sync.sendMove,
@@ -53,5 +61,7 @@ export function useGameSession(
     sync.sendCurrentState,
     sync.leaveGame,
     sync.sendChat,
+    sync.rejoinFromLastRoom,
+    sync.canRejoin,
   ]);
 }

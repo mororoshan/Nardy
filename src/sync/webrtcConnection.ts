@@ -13,6 +13,8 @@ export interface WebRtcConnectionHandle {
   onOpen(cb: () => void): void;
   onClose(cb: () => void): void;
   close(): void;
+  /** For connection quality stats (e.g. getStats). Null after close. */
+  getPeerConnection(): RTCPeerConnection | null;
 }
 
 function createPeerConnection(): RTCPeerConnection {
@@ -113,6 +115,9 @@ export function createOfferer(
       pc.close();
       closeListeners.forEach((cb) => cb());
     },
+    getPeerConnection(): RTCPeerConnection | null {
+      return isClosed ? null : pc;
+    },
   };
 }
 
@@ -190,6 +195,9 @@ export function createAnswerer(
       dataChannel?.close();
       pc.close();
       closeListeners.forEach((cb) => cb());
+    },
+    getPeerConnection(): RTCPeerConnection | null {
+      return isClosed ? null : pc;
     },
   };
 }

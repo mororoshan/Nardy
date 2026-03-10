@@ -9,26 +9,92 @@ const MIN_TOUCH_HEIGHT = 44;
 export interface MainMenuProps {
   onCreateGame: () => Promise<void>;
   onJoinGame: (roomId: string) => Promise<void>;
+  /** Re-create room as host with the same room id (for creator rejoin). */
+  onRejoinAsHost?: (roomId: string) => Promise<void>;
   onSinglePlayer: () => void;
   touchFriendly?: boolean;
 }
 
-const containerStyle: CSSProperties = {
+const rootStyle: CSSProperties = {
   display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
+  flexDirection: "row",
   minHeight: "100vh",
-  gap: theme.spacing.lg,
-  padding: theme.spacing.xl,
+  width: "100%",
   backgroundColor: theme.colors.background,
   color: theme.colors.text,
 };
 
+const rootStyleNarrow: CSSProperties = {
+  flexDirection: "column",
+};
+
+const panelBase: CSSProperties = {
+  flex: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: theme.spacing.lg,
+  padding: theme.spacing.xl,
+};
+
+const playPanelStyle: CSSProperties = {
+  ...panelBase,
+  backgroundColor: theme.colors.surface,
+  borderRight: `1px solid ${theme.colors.sidebarBorder}`,
+};
+
+const playPanelStyleNarrow: CSSProperties = {
+  borderRight: "none",
+  borderBottom: `1px solid ${theme.colors.sidebarBorder}`,
+};
+
+const connectPanelStyle: CSSProperties = {
+  ...panelBase,
+  backgroundColor: theme.colors.background,
+};
+
+const barStyle: CSSProperties = {
+  flexShrink: 0,
+  width: 48,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: theme.colors.surfaceElevated,
+  padding: theme.spacing.lg,
+};
+
+const barStyleNarrow: CSSProperties = {
+  width: "100%",
+  minHeight: 56,
+  padding: theme.spacing.md,
+};
+
 const titleStyle: CSSProperties = {
-  fontSize: 28,
+  fontSize: 22,
   fontWeight: 600,
-  marginBottom: theme.spacing.sm,
+  color: theme.colors.text,
+  margin: 0,
+  writingMode: "vertical-rl" as const,
+  textOrientation: "mixed",
+  letterSpacing: "0.05em",
+  transform: "rotate(180deg)",
+};
+
+const titleStyleNarrow: CSSProperties = {
+  writingMode: "horizontal-tb",
+  transform: "none",
+  letterSpacing: "normal",
+};
+
+const sectionLabelStyle: CSSProperties = {
+  fontSize: theme.fontSize.sm,
+  fontWeight: 600,
+  color: theme.colors.textMuted,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.08em",
+  margin: 0,
+  marginBottom: theme.spacing.xs,
 };
 
 const inputStyle: CSSProperties = {
@@ -45,11 +111,14 @@ const rowStyle: CSSProperties = {
   display: "flex",
   gap: theme.spacing.sm,
   alignItems: "center",
+  flexWrap: "wrap" as const,
+  justifyContent: "center",
 };
 
 export function MainMenu({
   onCreateGame,
   onJoinGame,
+  onRejoinAsHost,
   onSinglePlayer,
   touchFriendly = false,
 }: MainMenuProps) {
@@ -58,13 +127,6 @@ export function MainMenu({
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const containerStyleResolved: CSSProperties = {
-    ...containerStyle,
-    ...(touchFriendly && {
-      gap: theme.spacing.xl,
-      padding: theme.spacing.xl * 1.5,
-    }),
-  };
   const inputStyleResolved: CSSProperties = {
     ...inputStyle,
     ...(touchFriendly && { minHeight: MIN_TOUCH_HEIGHT }),
@@ -115,67 +177,154 @@ export function MainMenu({
     }
   };
 
+  const handleRejoinAsHost = async () => {
+    if (!roomInUrl || !onRejoinAsHost) return;
+    setError(null);
+    setLoading("rejoinHost");
+    try {
+      await onRejoinAsHost(roomInUrl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to rejoin as host");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const isNarrow = touchFriendly;
+
   return (
-    <div style={containerStyleResolved}>
-      <h1 style={titleStyle}>Nardi</h1>
-      <Button
-        size="lg"
-        onClick={onSinglePlayer}
-        disabled={loading !== null}
-        style={touchTargetStyle}
+    <main
+      style={{
+        ...rootStyle,
+        ...(isNarrow ? rootStyleNarrow : {}),
+      }}
+    >
+      <section
+        aria-labelledby="play-heading"
+        style={{
+          ...playPanelStyle,
+          ...(isNarrow ? playPanelStyleNarrow : {}),
+          ...(isNarrow && {
+            gap: theme.spacing.xl,
+            padding: theme.spacing.xl * 1.5,
+          }),
+        }}
       >
-        Single player
-      </Button>
-      <Button
-        size="lg"
-        onClick={handleCreate}
-        disabled={loading !== null}
-        style={touchTargetStyle}
-      >
-        {loading === "create" ? "Creating…" : "Create game"}
-      </Button>
-      <div style={rowStyle}>
-        <input
-          type="text"
-          placeholder="Room code"
-          value={joinRoomId}
-          onChange={(e) => setJoinRoomId(e.target.value)}
-          style={inputStyleResolved}
-          disabled={loading !== null}
-        />
+        <h2 id="play-heading" style={sectionLabelStyle}>
+          Play
+        </h2>
         <Button
           size="lg"
-          onClick={handleJoin}
+          onClick={onSinglePlayer}
           disabled={loading !== null}
           style={touchTargetStyle}
         >
-          {loading === "join" ? "Joining…" : "Join game"}
+          Single player
         </Button>
+      </section>
+
+      <div
+        style={{
+          ...barStyle,
+          ...(isNarrow ? barStyleNarrow : {}),
+        }}
+      >
+        <h1
+          style={{
+            ...titleStyle,
+            ...(isNarrow ? titleStyleNarrow : {}),
+          }}
+        >
+          Nardi
+        </h1>
       </div>
-      {roomInUrl && (
+
+      <section
+        aria-labelledby="connect-heading"
+        style={{
+          ...connectPanelStyle,
+          ...(isNarrow && {
+            gap: theme.spacing.xl,
+            padding: theme.spacing.xl * 1.5,
+          }),
+        }}
+      >
+        <h2 id="connect-heading" style={sectionLabelStyle}>
+          Connect
+        </h2>
         <Button
           size="lg"
-          style={{
-            backgroundColor: theme.colors.accent,
-            ...touchTargetStyle,
-          }}
-          onClick={handleRejoin}
+          onClick={handleCreate}
           disabled={loading !== null}
+          style={touchTargetStyle}
         >
-          {loading === "rejoin" ? "Rejoining…" : `Rejoin game (${roomInUrl})`}
+          {loading === "create" ? "Creating…" : "Create game"}
         </Button>
-      )}
-      {error && (
-        <p
-          style={{
-            color: theme.colors.error,
-            margin: 0,
-            fontSize: theme.fontSize.md,
-          }}
-        >
-          {error}
-        </p>
-      )}
-    </div>
+        <div style={rowStyle}>
+          <input
+            type="text"
+            aria-label="Room code"
+            placeholder="Room code"
+            value={joinRoomId}
+            onChange={(e) => setJoinRoomId(e.target.value)}
+            style={inputStyleResolved}
+            disabled={loading !== null}
+          />
+          <Button
+            size="lg"
+            onClick={handleJoin}
+            disabled={loading !== null}
+            style={touchTargetStyle}
+          >
+            {loading === "join" ? "Joining…" : "Join game"}
+          </Button>
+        </div>
+        {roomInUrl && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: theme.spacing.sm,
+              alignItems: "center",
+            }}
+          >
+            <Button
+              size="lg"
+              style={{
+                backgroundColor: theme.colors.accent,
+                ...touchTargetStyle,
+              }}
+              onClick={handleRejoin}
+              disabled={loading !== null}
+            >
+              {loading === "rejoin" ? "Rejoining…" : `Rejoin (${roomInUrl})`}
+            </Button>
+            {onRejoinAsHost && (
+              <Button
+                size="lg"
+                variant="secondary"
+                style={touchTargetStyle}
+                onClick={handleRejoinAsHost}
+                disabled={loading !== null}
+              >
+                {loading === "rejoinHost" ? "Recreating…" : "Rejoin as host"}
+              </Button>
+            )}
+          </div>
+        )}
+        {error && (
+          <p
+            role="alert"
+            style={{
+              color: theme.colors.error,
+              margin: 0,
+              fontSize: theme.fontSize.md,
+            }}
+          >
+            {error}
+          </p>
+        )}
+      </section>
+    </main>
   );
 }

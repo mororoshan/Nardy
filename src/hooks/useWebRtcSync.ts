@@ -7,7 +7,7 @@
  * Reconnection = rejoin (no automatic resume). Conflict model: last message wins per type.
  */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Player } from "../game/direction";
 import {
   createInitialState,
@@ -26,6 +26,7 @@ import {
   type WebRtcConnectionHandle,
 } from "../sync/webrtcConnection";
 import { setRoomInUrl } from "../sync/roomUrl";
+import { setLastRoom, getLastRoom } from "../sync/lastRoomStorage";
 import {
   parseSyncMessage,
   SyncMessageType,
@@ -41,11 +42,15 @@ function getSignalingUrl(): string {
   return DEFAULT_SIGNALING_URL;
 }
 
+const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 16000, 30000];
+const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS_MS.length;
+
 /** Connection status for UI. */
 export const ConnectionStatus = {
   Disconnected: "disconnected",
   Connecting: "connecting",
   Connected: "connected",
+  Reconnecting: "reconnecting",
 } as const;
 
 export type ConnectionStatusValue =
@@ -54,14 +59,31 @@ export type ConnectionStatusValue =
 /** Re-export for UI components that need to pass move payloads. */
 export type { MovePayload } from "../sync/webrtcSyncTypes";
 
+/** Connection quality from getStats (when connected). */
+export const ConnectionQuality = {
+  Excellent: "excellent",
+  Good: "good",
+  Poor: "poor",
+  Offline: "offline",
+} as const;
+
+export type ConnectionQualityValue =
+  (typeof ConnectionQuality)[keyof typeof ConnectionQuality];
+
 export interface UseWebRtcSyncResult {
   connectionStatus: ConnectionStatusValue;
+  /** When connected, derived from WebRTC stats; otherwise Offline. */
+  connectionQuality: ConnectionQualityValue;
   roomId: string | null;
   isCreator: boolean | null;
   localPlayer: Player | null;
-  createGame: () => Promise<void>;
+  createGame: (roomId?: string) => Promise<void>;
   joinGame: (roomId: string) => Promise<void>;
   leaveGame: () => void;
+  /** Rejoin the last room (creator re-creates, joiner joins). Throws if no previous room in storage. */
+  rejoinFromLastRoom: () => Promise<void>;
+  /** True when sessionStorage has a last room (e.g. after disconnect). */
+  canRejoin: boolean;
   sendDice: (dice: [number, number]) => void;
   sendCurrentState: () => void;
   /** Call with the move that was just applied (one send per move). */
@@ -78,13 +100,37 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isCreator, setIsCreator] = useState<boolean | null>(null);
 
+  const [connectionQuality, setConnectionQuality] =
+    useState<ConnectionQualityValue>(ConnectionQuality.Offline);
+
   const signalingRef = useRef<SignalingClient | null>(null);
   const connectionRef = useRef<WebRtcConnectionHandle | null>(null);
   const isApplyingRemoteRef = useRef(false);
   const hasReceivedStateRef = useRef(false);
   const remotePlayerRef = useRef<Player | null>(null);
+  const roomIdRef = useRef<string | null>(null);
+  const isCreatorRef = useRef<boolean | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const reconnectAttemptRef = useRef(0);
+  /** When true, signaling onClose must not run full cleanup (we're scheduling reconnect). */
+  const reconnectingRef = useRef(false);
+  roomIdRef.current = roomId;
+  isCreatorRef.current = isCreator;
 
   const cleanup = useCallback(() => {
+    reconnectingRef.current = false;
+    const lastId = roomIdRef.current;
+    const lastCreator = isCreatorRef.current;
+    if (lastId != null && lastCreator != null) {
+      setLastRoom(lastId, lastCreator);
+    }
+    if (reconnectTimeoutRef.current != null) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    reconnectAttemptRef.current = 0;
     const conn = connectionRef.current;
     const sig = signalingRef.current;
     connectionRef.current = null;
@@ -94,9 +140,41 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     sig?.close();
     hasReceivedStateRef.current = false;
     setConnectionStatus(ConnectionStatus.Disconnected);
+    setConnectionQuality(ConnectionQuality.Offline);
     setRoomId(null);
     setIsCreator(null);
   }, []);
+
+  const createGameRef = useRef<(roomId?: string) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
+  const joinGameRef = useRef<(id: string) => Promise<void>>(() =>
+    Promise.resolve(),
+  );
+
+  const scheduleReconnect = useCallback(
+    (savedRoomId: string, savedIsCreator: boolean) => {
+      const attempt = reconnectAttemptRef.current;
+      if (attempt >= MAX_RECONNECT_ATTEMPTS) return;
+      const delay =
+        RECONNECT_DELAYS_MS[Math.min(attempt, RECONNECT_DELAYS_MS.length - 1)];
+      reconnectTimeoutRef.current = setTimeout(async () => {
+        reconnectTimeoutRef.current = null;
+        try {
+          if (savedIsCreator) {
+            await createGameRef.current(savedRoomId);
+          } else {
+            await joinGameRef.current(savedRoomId);
+          }
+          reconnectAttemptRef.current = 0;
+        } catch {
+          reconnectAttemptRef.current = attempt + 1;
+          scheduleReconnect(savedRoomId, savedIsCreator);
+        }
+      }, delay);
+    },
+    [],
+  );
 
   const applyRemoteState = useCallback((state: NardiState) => {
     isApplyingRemoteRef.current = true;
@@ -166,6 +244,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
               }
             : undefined;
         setStoreToMyTurn(next, entry);
+        useNardiGameStore.getState().setLastMove(msg.from, msg.to, state.turn);
         return;
       }
 
@@ -225,57 +304,93 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     [applyRemoteState, setStoreToMyTurn],
   );
 
-  const createGame = useCallback(async () => {
-    cleanup();
-    setConnectionStatus(ConnectionStatus.Connecting);
-    setIsCreator(true);
-    const signaling = new SignalingClient(getSignalingUrl());
-    signalingRef.current = signaling;
-    try {
-      await signaling.connect();
-    } catch (e) {
-      setConnectionStatus(ConnectionStatus.Disconnected);
-      setIsCreator(null);
-      throw e;
-    }
-    signaling.setCallbacks({
-      onCreated: (id) => {
-        setRoomId(id);
-        setRoomInUrl(id);
-      },
-      onPeerJoined: () => {
-        const sendSignal = (data: unknown) =>
-          signalingRef.current?.sendSignal(data);
-        const conn = createOfferer(sendSignal);
-        connectionRef.current = conn;
-        conn.onOpen(() => {
-          setConnectionStatus(ConnectionStatus.Connected);
-          const current = useNardiGameStore.getState().state;
-          const isFresh =
-            current.phase === "firstRoll" &&
-            current.firstRollDice.white === null &&
-            current.firstRollDice.black === null;
-          const state = isFresh
-            ? createInitialState()
-            : useNardiGameStore.getState().state;
-          if (isFresh)
-            useNardiGameStore.setState({ state, selectedPoint: null });
-          conn.send({ type: SyncMessageType.State, state });
-        });
-        conn.onMessage((s) => handleMessage(s));
-        conn.onClose(cleanup);
-      },
-      onSignal: (data) => {
-        connectionRef.current?.receiveSignal(data);
-      },
-      onPeerLeft: cleanup,
-      onError: () => {
-        cleanup();
-      },
-      onClose: cleanup,
-    });
-    signaling.createRoom();
-  }, [cleanup, handleMessage]);
+  const createGame = useCallback(
+    async (rejoinRoomId?: string) => {
+      cleanup();
+      setConnectionStatus(ConnectionStatus.Connecting);
+      setIsCreator(true);
+      if (rejoinRoomId != null && rejoinRoomId.trim() !== "") {
+        setRoomId(rejoinRoomId.trim());
+        setRoomInUrl(rejoinRoomId.trim());
+      }
+      const signaling = new SignalingClient(getSignalingUrl());
+      signalingRef.current = signaling;
+      try {
+        await signaling.connect();
+      } catch (e) {
+        setConnectionStatus(ConnectionStatus.Disconnected);
+        setIsCreator(null);
+        setRoomId(null);
+        throw e;
+      }
+      signaling.setCallbacks({
+        onCreated: (id) => {
+          setRoomId(id);
+          setRoomInUrl(id);
+        },
+        onPeerJoined: () => {
+          const sendSignal = (data: unknown) =>
+            signalingRef.current?.sendSignal(data);
+          const conn = createOfferer(sendSignal);
+          connectionRef.current = conn;
+          conn.onOpen(() => {
+            setConnectionStatus(ConnectionStatus.Connected);
+            const current = useNardiGameStore.getState().state;
+            const isFresh =
+              current.phase === "firstRoll" &&
+              current.firstRollDice.white === null &&
+              current.firstRollDice.black === null;
+            const state = isFresh
+              ? createInitialState()
+              : useNardiGameStore.getState().state;
+            if (isFresh)
+              useNardiGameStore.setState({ state, selectedPoint: null });
+            conn.send({ type: SyncMessageType.State, state });
+          });
+          conn.onMessage((s) => handleMessage(s));
+          conn.onClose(() => {
+            const rid = roomIdRef.current;
+            const creator = isCreatorRef.current;
+            if (rid == null || creator == null) {
+              cleanup();
+              return;
+            }
+            reconnectingRef.current = true;
+            const connToClose = connectionRef.current;
+            const sigToClose = signalingRef.current;
+            connectionRef.current = null;
+            signalingRef.current = null;
+            connToClose?.close();
+            sigToClose?.leave();
+            sigToClose?.close();
+            hasReceivedStateRef.current = false;
+            setConnectionStatus(ConnectionStatus.Reconnecting);
+            setConnectionQuality(ConnectionQuality.Offline);
+            setRoomId(rid);
+            setIsCreator(creator);
+            if (reconnectTimeoutRef.current != null) {
+              clearTimeout(reconnectTimeoutRef.current);
+              reconnectTimeoutRef.current = null;
+            }
+            scheduleReconnect(rid, creator);
+          });
+        },
+        onSignal: (data) => {
+          connectionRef.current?.receiveSignal(data);
+        },
+        onPeerLeft: cleanup,
+        onError: () => {
+          cleanup();
+        },
+        onClose: () => {
+          if (reconnectingRef.current) return;
+          cleanup();
+        },
+      });
+      signaling.createRoom(rejoinRoomId?.trim() || undefined);
+    },
+    [cleanup, handleMessage, scheduleReconnect],
+  );
 
   const joinGame = useCallback(
     async (id: string) => {
@@ -303,7 +418,32 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         conn.send({ type: SyncMessageType.RequestState });
       });
       conn.onMessage((s) => handleMessage(s));
-      conn.onClose(cleanup);
+      conn.onClose(() => {
+        const rid = roomIdRef.current;
+        const creator = isCreatorRef.current;
+        if (rid == null || creator == null) {
+          cleanup();
+          return;
+        }
+        reconnectingRef.current = true;
+        const connToClose = connectionRef.current;
+        const sigToClose = signalingRef.current;
+        connectionRef.current = null;
+        signalingRef.current = null;
+        connToClose?.close();
+        sigToClose?.leave();
+        sigToClose?.close();
+        hasReceivedStateRef.current = false;
+        setConnectionStatus(ConnectionStatus.Reconnecting);
+        setConnectionQuality(ConnectionQuality.Offline);
+        setRoomId(rid);
+        setIsCreator(creator);
+        if (reconnectTimeoutRef.current != null) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        scheduleReconnect(rid, creator);
+      });
       signaling.setCallbacks({
         onJoined: () => {},
         onSignal: (data) => conn.receiveSignal(data),
@@ -311,16 +451,45 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         onError: () => {
           cleanup();
         },
-        onClose: cleanup,
+        onClose: () => {
+          if (reconnectingRef.current) return;
+          cleanup();
+        },
       });
       signaling.joinRoom(id);
     },
-    [cleanup, handleMessage],
+    [cleanup, handleMessage, scheduleReconnect],
   );
+
+  useEffect(() => {
+    createGameRef.current = createGame;
+    joinGameRef.current = joinGame;
+  }, [createGame, joinGame]);
+
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current != null) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   const leaveGame = useCallback(() => {
     cleanup();
   }, [cleanup]);
+
+  const rejoinFromLastRoom = useCallback(async () => {
+    const last = getLastRoom();
+    if (!last) {
+      throw new Error("No previous room to rejoin");
+    }
+    if (last.isCreator) {
+      await createGame(last.roomId);
+    } else {
+      await joinGame(last.roomId);
+    }
+  }, [createGame, joinGame]);
 
   const sendDice = useCallback((dice: [number, number]) => {
     const conn = connectionRef.current;
@@ -361,14 +530,56 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
   remotePlayerRef.current =
     isCreator === true ? "black" : isCreator === false ? "white" : null;
 
+  const canRejoin = getLastRoom() !== null;
+
+  useEffect(() => {
+    if (connectionStatus !== ConnectionStatus.Connected) return;
+    const pc = connectionRef.current?.getPeerConnection();
+    if (!pc) return;
+
+    const poll = async () => {
+      try {
+        const report = await pc.getStats();
+        let rttMs: number | null = null;
+        report.forEach((stat) => {
+          if (
+            stat.type === "candidate-pair" &&
+            "currentRoundTripTime" in stat &&
+            typeof (stat as RTCIceCandidatePairStats).currentRoundTripTime ===
+              "number"
+          ) {
+            const rtt = (stat as RTCIceCandidatePairStats).currentRoundTripTime;
+            if (typeof rtt === "number" && rtt > 0) rttMs = rtt * 1000;
+          }
+        });
+        if (rttMs != null) {
+          if (rttMs < 100) setConnectionQuality(ConnectionQuality.Excellent);
+          else if (rttMs < 200) setConnectionQuality(ConnectionQuality.Good);
+          else setConnectionQuality(ConnectionQuality.Poor);
+        } else {
+          setConnectionQuality(ConnectionQuality.Good);
+        }
+      } catch {
+        setConnectionQuality(ConnectionQuality.Poor);
+      }
+    };
+
+    poll();
+    const interval = setInterval(poll, 3000);
+    return () => clearInterval(interval);
+  }, [connectionStatus]);
+
   return {
     connectionStatus,
+    connectionQuality,
     roomId,
     isCreator,
     localPlayer,
     createGame,
     joinGame,
     leaveGame,
+    rejoinFromLastRoom,
+    canRejoin,
     sendDice,
     sendCurrentState,
     sendMove,

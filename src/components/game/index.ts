@@ -1,5 +1,7 @@
 export { BackgammonBoard } from "./BackgammonBoard";
 export type { BackgammonBoardProps } from "./BackgammonBoard";
+export { GameEndScreen } from "./GameEndScreen";
+export type { GameEndScreenProps } from "./GameEndScreen";
 export { DiceDisplay } from "./DiceDisplay";
 export type { DiceDisplayProps } from "./DiceDisplay";
 export { GameSidebar } from "./GameSidebar";
