@@ -69,6 +69,7 @@ export default function App() {
   if (screen === "menu") {
     return (
       <MainMenu
+        touchFriendly={isNarrow}
         onCreateGame={async () => {
           await sync.createGame();
           setGameMode("multiplayer");
