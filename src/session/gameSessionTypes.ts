@@ -10,8 +10,13 @@ import type {
 } from "../hooks/useWebRtcSync";
 import type { MovePayload } from "../sync/webrtcSyncTypes";
 
+/** When mode is "local": play vs bot or two humans (pass & play). */
+export type LocalPlayMode = "vsBot" | "twoPlayers";
+
 export interface NardiGameSession {
   mode: "local" | "multiplayer";
+  /** Only set when mode is "local": vs bot (AI plays black) or two players on same device. */
+  localPlayMode?: LocalPlayMode;
   connectionStatus: ConnectionStatusValue;
   /** When connected: excellent / good / poor; when disconnected: offline. */
   connectionQuality: ConnectionQualityValue;
@@ -29,4 +34,8 @@ export interface NardiGameSession {
   onRejoin?: () => Promise<void>;
   /** True when rejoin is available (last room in storage). */
   canRejoin?: boolean;
+  /** Notify peer to start next game (keep match score). Multiplayer only. */
+  onNextGame?: () => void;
+  /** Notify peer to start new match (reset match score). Multiplayer only. */
+  onNewMatch?: () => void;
 }

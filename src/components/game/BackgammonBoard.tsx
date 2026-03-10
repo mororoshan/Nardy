@@ -162,24 +162,38 @@ function BoardPieces({
   );
 }
 
-/** Movable-point, selected-point, legal-destination, and last-move highlights. */
+/** Movable-point, selected-point, legal-destination, last-move, and hint highlights. */
 function BoardHighlights({
   movablePoints,
   selectedPoint,
   legalDests,
   canSelectOrMove,
   lastMove,
+  hintMove,
 }: {
   movablePoints: number[];
   selectedPoint: number | null;
   legalDests: number[];
   canSelectOrMove: boolean;
   lastMove: LastMove | null;
+  hintMove: { from: number; to: number } | null;
 }) {
   return (
     <pixiGraphics
       draw={(g: Graphics) => {
         g.clear();
+        if (hintMove) {
+          const fromPos = pointIndexToPixelCenter(hintMove.from);
+          g.circle(fromPos.x, fromPos.y, HIGHLIGHT_RADIUS)
+            .fill({ color: 0x22d3ee, alpha: 0.4 })
+            .stroke({ width: 2, color: 0x06b6d4 });
+          if (hintMove.to !== 0) {
+            const toPos = pointIndexToPixelCenter(hintMove.to);
+            g.circle(toPos.x, toPos.y, HIGHLIGHT_RADIUS)
+              .fill({ color: 0x22d3ee, alpha: 0.4 })
+              .stroke({ width: 2, color: 0x06b6d4 });
+          }
+        }
         if (lastMove) {
           const fromPos = pointIndexToPixelCenter(lastMove.from);
           g.circle(fromPos.x, fromPos.y, HIGHLIGHT_RADIUS)
@@ -227,6 +241,7 @@ const LAST_MOVE_HIGHLIGHT_MS = 2000;
 export function BackgammonBoard({ session }: BackgammonBoardProps) {
   const { state, selectedPoint, selectPoint, moveTo } = useNardiGame();
   const lastMove = useNardiGameStore((s) => s.lastMove);
+  const hintMove = useNardiGameStore((s) => s.hintMove);
   const clearLastMove = useNardiGameStore((s) => s.clearLastMove);
   const [moveProgress, setMoveProgress] = useState(0);
   const animRef = useRef<number | null>(null);
@@ -332,6 +347,7 @@ export function BackgammonBoard({ session }: BackgammonBoardProps) {
         legalDests={legalDests}
         canSelectOrMove={canSelectOrMove}
         lastMove={lastMove}
+        hintMove={hintMove}
       />
     </BoardHitArea>
   );

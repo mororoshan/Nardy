@@ -217,6 +217,22 @@ export function getLegalMoves(state: NardiState): LegalMove[] {
   return moves;
 }
 
+/**
+ * Pick one suggested move for a hint: prefer bear-off, then advance furthest piece.
+ * Returns null if there are no legal moves.
+ */
+export function pickHintMove(state: NardiState): LegalMove | null {
+  const moves = getLegalMoves(state);
+  if (moves.length === 0) return null;
+  const bearOff = moves.find((m) => m.to === 0);
+  if (bearOff) return bearOff;
+  const player = state.turn;
+  if (player === "white") {
+    return moves.reduce((a, b) => (a.from <= b.from ? a : b));
+  }
+  return moves.reduce((a, b) => (a.from >= b.from ? a : b));
+}
+
 export function getPointsWithMovableChips(state: NardiState): number[] {
   const moves = getLegalMoves(state);
   const set = new Set<number>();

@@ -92,6 +92,8 @@ export interface UseWebRtcSyncResult {
   sendPass: () => void;
   /** Send a quickchat message (multiplayer only; no-op when disconnected). */
   sendChat: (text: string) => void;
+  /** Send next game (keep score) or new match (reset score) to peer. */
+  sendNewGame: (resetMatchScore: boolean) => void;
 }
 
 export function useWebRtcSync(): UseWebRtcSyncResult {
@@ -298,6 +300,15 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
             turn: state.turn === "white" ? "black" : "white",
           };
           setStoreToMyTurn(next, entry);
+        }
+        return;
+      }
+
+      if (msg.type === SyncMessageType.NewGame) {
+        if (msg.resetMatchScore) {
+          useNardiGameStore.getState().newGame();
+        } else {
+          useNardiGameStore.getState().nextGame();
         }
       }
     },
@@ -524,6 +535,15 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     if (conn) conn.send({ type: SyncMessageType.Chat, text });
   }, []);
 
+  const sendNewGame = useCallback((resetMatchScore: boolean) => {
+    const conn = connectionRef.current;
+    if (conn)
+      conn.send({
+        type: SyncMessageType.NewGame,
+        resetMatchScore,
+      });
+  }, []);
+
   const localPlayer: Player | null =
     isCreator === true ? "white" : isCreator === false ? "black" : null;
 
@@ -585,5 +605,6 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     sendMove,
     sendPass,
     sendChat,
+    sendNewGame,
   };
 }

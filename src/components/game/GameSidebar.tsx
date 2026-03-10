@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import type { NardiGameSession } from "../../session/gameSessionTypes";
 import { getJoinUrl } from "../../sync/roomUrl";
+import { useNardiGameStore } from "../../stores/nardiGameStore";
 import { theme } from "../../theme";
 import { Button, TabBar } from "../ui";
 import { MoveHistoryList } from "./MoveHistoryList";
@@ -218,9 +219,16 @@ export function GameSidebar({
     session.roomId != null &&
     session.connectionStatus === "connected";
 
+  const matchScore = useNardiGameStore((s) => s.matchScore);
+  const matchTarget = useNardiGameStore((s) => s.matchTarget);
+
   return (
     <aside style={isNarrow ? sidebarStyleNarrow : sidebarStyle}>
       <div style={headerStyle}>
+        <p style={roomLabelStyle}>
+          Match: White {matchScore.white} – {matchScore.black} Black
+          {matchTarget > 0 ? ` (first to ${matchTarget})` : ""}
+        </p>
         <Button
           variant="secondary"
           size="md"

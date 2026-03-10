@@ -12,6 +12,7 @@ export const SyncMessageType = {
   Pass: "pass",
   RequestState: "request_state",
   Chat: "chat",
+  NewGame: "new_game",
 } as const;
 
 export type SyncMessageTypeValue =
@@ -69,6 +70,13 @@ export interface RequestStateMessage {
   type: typeof SyncMessageType.RequestState;
 }
 
+/** Sent when a peer wants to start next game (keep score) or new match (reset score). */
+export interface NewGameMessage {
+  type: typeof SyncMessageType.NewGame;
+  /** If true, reset match score; if false, keep score (next game in match). */
+  resetMatchScore: boolean;
+}
+
 /** Max length for quickchat text over the data channel. */
 const MAX_CHAT_LENGTH = 500;
 
@@ -84,7 +92,8 @@ export type SyncMessage =
   | DiceMessage
   | PassMessage
   | RequestStateMessage
-  | ChatMessage;
+  | ChatMessage
+  | NewGameMessage;
 
 /** State payload is trusted from the peer; no structural NardiState validation. */
 function isStateMessage(o: unknown): o is StateMessage {
@@ -136,6 +145,15 @@ function isRequestStateMessage(o: unknown): o is RequestStateMessage {
   return obj.type === SyncMessageType.RequestState;
 }
 
+function isNewGameMessage(o: unknown): o is NewGameMessage {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  return (
+    obj.type === SyncMessageType.NewGame &&
+    typeof obj.resetMatchScore === "boolean"
+  );
+}
+
 function isChatMessage(o: unknown): o is ChatMessage {
   if (o === null || typeof o !== "object") return false;
   const obj = o as Record<string, unknown>;
@@ -172,6 +190,11 @@ export function parseSyncMessage(raw: string): SyncMessage | null {
     };
   if (isPassMessage(obj)) return { type: SyncMessageType.Pass };
   if (isRequestStateMessage(obj)) return { type: SyncMessageType.RequestState };
+  if (isNewGameMessage(obj))
+    return {
+      type: SyncMessageType.NewGame,
+      resetMatchScore: obj.resetMatchScore,
+    };
   if (isChatMessage(obj))
     return {
       type: SyncMessageType.Chat,

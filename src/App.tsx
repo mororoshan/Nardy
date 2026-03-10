@@ -7,12 +7,14 @@ import { BOARD_ASPECT_RATIO } from "./game/boardGeometry";
 
 import { MainMenu } from "./components/MainMenu";
 import { useBreakpoint } from "./hooks/useBreakpoint";
+import { useOpponentAi } from "./hooks/useOpponentAi";
 import { useWebRtcSync } from "./hooks/useWebRtcSync";
 import { useGameSession } from "./session/useGameSession";
 import { theme } from "./theme";
 import { BackgammonBoard, GameEndScreen, GameSidebar } from "./components/game";
 import { useChatStore } from "./stores/chatStore";
 import { useNardiGameStore } from "./stores/nardiGameStore";
+import type { LocalPlayMode } from "./session/gameSessionTypes";
 import { clearLastRoom } from "./sync/lastRoomStorage";
 
 extend({
@@ -38,16 +40,26 @@ const boardWrapperStyle: React.CSSProperties = {
 export default function App() {
   const [screen, setScreen] = useState<"menu" | "game">("menu");
   const [gameMode, setGameMode] = useState<"local" | "multiplayer">("local");
+  const [localPlayMode, setLocalPlayMode] = useState<LocalPlayMode>("vsBot");
   const [boardContainer, setBoardContainer] = useState<HTMLDivElement | null>(
     null,
   );
   const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
 
   const sync = useWebRtcSync();
-  const session = useGameSession(screen === "game" ? gameMode : "local", sync);
+  const session = useGameSession(
+    screen === "game" ? gameMode : "local",
+    sync,
+    screen === "game" && gameMode === "local" ? localPlayMode : "vsBot",
+  );
   const { isNarrow } = useBreakpoint();
+  useOpponentAi(session, screen === "game");
   const gamePhase = useNardiGameStore((s) => s.state.phase);
   const gameOverResult = useNardiGameStore((s) => s.state.gameOverResult);
+  const matchScore = useNardiGameStore((s) => s.matchScore);
+  const matchTarget = useNardiGameStore((s) => s.matchTarget);
+  const nextGame = useNardiGameStore((s) => s.nextGame);
+  const newGame = useNardiGameStore((s) => s.newGame);
 
   const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
     setBoardContainer(el);
@@ -94,6 +106,13 @@ export default function App() {
         onSinglePlayer={() => {
           clearLastRoom();
           setGameMode("local");
+          setLocalPlayMode("vsBot");
+          setScreen("game");
+        }}
+        onTwoPlayers={() => {
+          clearLastRoom();
+          setGameMode("local");
+          setLocalPlayMode("twoPlayers");
           setScreen("game");
         }}
       />
@@ -118,11 +137,24 @@ export default function App() {
     </div>
   );
 
+  const handleNextGame = () => {
+    nextGame();
+    session.onNextGame?.();
+  };
+  const handleNewMatch = () => {
+    newGame();
+    session.onNewMatch?.();
+  };
+
   const gameEndOverlay =
     gamePhase === "gameOver" && gameOverResult ? (
       <GameEndScreen
         winner={gameOverResult.winner}
         oynOrMars={gameOverResult.oynOrMars}
+        matchScore={matchScore}
+        matchTarget={matchTarget}
+        onNextGame={handleNextGame}
+        onNewMatch={handleNewMatch}
         onBackToMenu={handleBackToMenu}
       />
     ) : null;

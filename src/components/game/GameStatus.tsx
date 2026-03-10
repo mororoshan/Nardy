@@ -25,17 +25,16 @@ export function GameStatus({
   onAfterMove,
   onAfterPass,
 }: GameStatusProps = {}) {
-  const { state, selectedPoint, moveTo, passWhenNoMoves, newGame } =
+  const { state, selectedPoint, moveTo, passWhenNoMoves, newGame, showHint } =
     useNardiGame();
   const legalDests =
     selectedPoint !== null
       ? getLegalDestinationsFromPoint(state, selectedPoint)
       : [];
   const canBearOff = legalDests.includes(0);
+  const legalMoves = getLegalMoves(state);
   const hasNoLegalMoves =
-    state.phase === "playing" &&
-    state.dice !== null &&
-    getLegalMoves(state).length === 0;
+    state.phase === "playing" && state.dice !== null && legalMoves.length === 0;
   const isMyTurn =
     !isMultiplayer || localPlayer === null || state.turn === localPlayer;
 
@@ -63,6 +62,16 @@ export function GameStatus({
             : "Opponent's turn"
           : `${state.turn === "white" ? "White" : "Black"}'s turn`}
       </p>
+      {isMyTurn &&
+        state.phase === "playing" &&
+        state.dice !== null &&
+        (legalMoves.length > 0 ? (
+          <Button onClick={showHint} title="Show a suggested move">
+            Hint
+          </Button>
+        ) : (
+          <span style={styles.noMoves}>No moves</span>
+        ))}
       {isMyTurn && selectedPoint !== null && canBearOff && (
         <Button
           onClick={() => {
@@ -114,6 +123,10 @@ const styles: Record<string, CSSProperties> = {
     margin: 0,
     color: theme.colors.textMuted,
     fontSize: theme.fontSize.md,
+  },
+  noMoves: {
+    fontSize: theme.fontSize.sm,
+    color: theme.colors.textMuted,
   },
   result: {
     margin: 0,

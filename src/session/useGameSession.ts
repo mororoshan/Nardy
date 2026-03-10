@@ -5,32 +5,36 @@
 import { useMemo } from "react";
 import { ConnectionStatus } from "../hooks/useWebRtcSync";
 import type { UseWebRtcSyncResult } from "../hooks/useWebRtcSync";
-import type { NardiGameSession } from "./gameSessionTypes";
+import type { LocalPlayMode, NardiGameSession } from "./gameSessionTypes";
 
 import { ConnectionQuality } from "../hooks/useWebRtcSync";
 
-const LOCAL_SESSION: NardiGameSession = {
-  mode: "local",
-  connectionStatus: ConnectionStatus.Connected,
-  connectionQuality: ConnectionQuality.Offline,
-  roomId: null,
-  localPlayer: null,
-  onAfterMove: () => {},
-  onAfterPass: () => {},
-  onAfterRoll: () => {},
-  onAfterFirstRoll: () => {},
-  leaveGame: () => {},
-  copyRoomCode: () => {},
-  sendChat: () => {},
-  canRejoin: false,
-};
+function buildLocalSession(localPlayMode: LocalPlayMode): NardiGameSession {
+  return {
+    mode: "local",
+    localPlayMode,
+    connectionStatus: ConnectionStatus.Connected,
+    connectionQuality: ConnectionQuality.Offline,
+    roomId: null,
+    localPlayer: null,
+    onAfterMove: () => {},
+    onAfterPass: () => {},
+    onAfterRoll: () => {},
+    onAfterFirstRoll: () => {},
+    leaveGame: () => {},
+    copyRoomCode: () => {},
+    sendChat: () => {},
+    canRejoin: false,
+  };
+}
 
 export function useGameSession(
   mode: "local" | "multiplayer",
   sync: UseWebRtcSyncResult,
+  localPlayMode: LocalPlayMode = "vsBot",
 ): NardiGameSession {
   return useMemo(() => {
-    if (mode === "local") return LOCAL_SESSION;
+    if (mode === "local") return buildLocalSession(localPlayMode);
     return {
       mode: "multiplayer",
       connectionStatus: sync.connectionStatus,
@@ -48,20 +52,8 @@ export function useGameSession(
       sendChat: sync.sendChat,
       onRejoin: sync.rejoinFromLastRoom,
       canRejoin: sync.canRejoin,
+      onNextGame: () => sync.sendNewGame(false),
+      onNewMatch: () => sync.sendNewGame(true),
     };
-  }, [
-    mode,
-    sync.connectionStatus,
-    sync.connectionQuality,
-    sync.roomId,
-    sync.localPlayer,
-    sync.sendMove,
-    sync.sendPass,
-    sync.sendDice,
-    sync.sendCurrentState,
-    sync.leaveGame,
-    sync.sendChat,
-    sync.rejoinFromLastRoom,
-    sync.canRejoin,
-  ]);
+  }, [mode, sync, localPlayMode]);
 }

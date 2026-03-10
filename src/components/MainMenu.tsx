@@ -11,7 +11,10 @@ export interface MainMenuProps {
   onJoinGame: (roomId: string) => Promise<void>;
   /** Re-create room as host with the same room id (for creator rejoin). */
   onRejoinAsHost?: (roomId: string) => Promise<void>;
+  /** Play vs bot (AI plays black). */
   onSinglePlayer: () => void;
+  /** Play offline, two players on same device (pass & play). */
+  onTwoPlayers: () => void;
   touchFriendly?: boolean;
 }
 
@@ -120,6 +123,7 @@ export function MainMenu({
   onJoinGame,
   onRejoinAsHost,
   onSinglePlayer,
+  onTwoPlayers,
   touchFriendly = false,
 }: MainMenuProps) {
   const roomInUrl = getRoomFromUrl();
@@ -218,8 +222,19 @@ export function MainMenu({
           onClick={onSinglePlayer}
           disabled={loading !== null}
           style={touchTargetStyle}
+          title="Play vs computer (you are White)"
         >
-          Single player
+          Vs bot
+        </Button>
+        <Button
+          size="lg"
+          variant="secondary"
+          onClick={onTwoPlayers}
+          disabled={loading !== null}
+          style={touchTargetStyle}
+          title="Two players on this device (pass and play)"
+        >
+          Two players
         </Button>
       </section>
 
