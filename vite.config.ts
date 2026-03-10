@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+/// <reference types="vitest" />
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -20,6 +21,10 @@ const hasHttps = fs.existsSync(certPath) && fs.existsSync(keyPath);
 export default defineConfig({
   base,
   plugins: [react()],
+  test: {
+    environment: "jsdom",
+    globals: true,
+  },
   server: {
     host: true,
     ...(hasHttps && {
