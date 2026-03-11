@@ -38,4 +38,8 @@ export interface NardiGameSession {
   onNextGame?: () => void;
   /** Notify peer to start new match (reset match score). Multiplayer only. */
   onNewMatch?: () => void;
+  /** True when current game was started via ranked matchmaking. */
+  isRankedGame?: boolean;
+  /** Report game result to server for ELO (ranked only). Call when phase is gameOver. */
+  reportGameResult?: (winner: Player) => void;
 }

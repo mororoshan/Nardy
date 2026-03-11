@@ -54,6 +54,8 @@ export function useGameSession(
       canRejoin: sync.canRejoin,
       onNextGame: () => sync.sendNewGame(false),
       onNewMatch: () => sync.sendNewGame(true),
+      isRankedGame: sync.isRankedGame,
+      reportGameResult: sync.reportGameResult,
     };
   }, [mode, sync, localPlayMode]);
 }

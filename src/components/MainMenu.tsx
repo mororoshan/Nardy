@@ -3,12 +3,19 @@ import { useState } from "react";
 import { theme } from "../theme";
 import { getRoomFromUrl } from "../sync/roomUrl";
 import { Button } from "./ui";
+import type { QueueStatus } from "../hooks/useWebRtcSync";
 
 const MIN_TOUCH_HEIGHT = 44;
 
 export interface MainMenuProps {
   onCreateGame: () => Promise<void>;
   onJoinGame: (roomId: string) => Promise<void>;
+  /** Ranked matchmaking: join queue and wait for match. */
+  onPlayRanked?: () => Promise<void>;
+  /** Cancel ranked queue search. */
+  onCancelRanked?: () => void;
+  /** "searching" while in ranked queue. */
+  queueStatus?: QueueStatus;
   /** Re-create room as host with the same room id (for creator rejoin). */
   onRejoinAsHost?: (roomId: string) => Promise<void>;
   /** Play vs bot (AI plays black). */
@@ -121,6 +128,9 @@ const rowStyle: CSSProperties = {
 export function MainMenu({
   onCreateGame,
   onJoinGame,
+  onPlayRanked,
+  onCancelRanked,
+  queueStatus = "idle",
   onRejoinAsHost,
   onSinglePlayer,
   onTwoPlayers,
@@ -130,6 +140,7 @@ export function MainMenu({
   const [joinRoomId, setJoinRoomId] = useState(roomInUrl ?? "");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const searching = queueStatus === "searching";
 
   const inputStyleResolved: CSSProperties = {
     ...inputStyle,
@@ -267,10 +278,53 @@ export function MainMenu({
         <h2 id="connect-heading" style={sectionLabelStyle}>
           Connect
         </h2>
+        {onPlayRanked && (
+          <>
+            <Button
+              size="lg"
+              onClick={async () => {
+                setError(null);
+                setLoading("ranked");
+                try {
+                  await onPlayRanked();
+                  setLoading(null);
+                } catch (e) {
+                  setError(
+                    e instanceof Error ? e.message : "Failed to join queue",
+                  );
+                  setLoading(null);
+                }
+              }}
+              disabled={loading !== null || searching}
+              style={{
+                ...touchTargetStyle,
+                ...(searching
+                  ? { backgroundColor: theme.colors.surfaceElevated }
+                  : {}),
+              }}
+            >
+              {searching
+                ? "Searching for match…"
+                : loading === "ranked"
+                  ? "Joining…"
+                  : "Play ranked"}
+            </Button>
+            {searching && onCancelRanked && (
+              <Button
+                size="lg"
+                variant="secondary"
+                onClick={onCancelRanked}
+                style={touchTargetStyle}
+              >
+                Cancel
+              </Button>
+            )}
+          </>
+        )}
         <Button
           size="lg"
           onClick={handleCreate}
-          disabled={loading !== null}
+          disabled={loading !== null || searching}
           style={touchTargetStyle}
         >
           {loading === "create" ? "Creating…" : "Create game"}

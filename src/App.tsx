@@ -41,12 +41,26 @@ export default function App() {
   const [screen, setScreen] = useState<"menu" | "game">("menu");
   const [gameMode, setGameMode] = useState<"local" | "multiplayer">("local");
   const [localPlayMode, setLocalPlayMode] = useState<LocalPlayMode>("vsBot");
+  const [rankedSearchStarted, setRankedSearchStarted] = useState(false);
   const [boardContainer, setBoardContainer] = useState<HTMLDivElement | null>(
     null,
   );
   const [boardSize, setBoardSize] = useState({ width: 0, height: 0 });
 
   const sync = useWebRtcSync();
+
+  useEffect(() => {
+    if (
+      screen !== "menu" ||
+      !rankedSearchStarted ||
+      !sync.roomId ||
+      sync.connectionStatus !== "connected"
+    )
+      return;
+    setGameMode("multiplayer");
+    setScreen("game");
+    setRankedSearchStarted(false);
+  }, [screen, rankedSearchStarted, sync.roomId, sync.connectionStatus]);
   const session = useGameSession(
     screen === "game" ? gameMode : "local",
     sync,
@@ -60,6 +74,23 @@ export default function App() {
   const matchTarget = useNardiGameStore((s) => s.matchTarget);
   const nextGame = useNardiGameStore((s) => s.nextGame);
   const newGame = useNardiGameStore((s) => s.newGame);
+
+  useEffect(() => {
+    if (
+      gamePhase !== "gameOver" ||
+      !gameOverResult ||
+      !session.isRankedGame ||
+      !session.reportGameResult
+    )
+      return;
+    session.reportGameResult(gameOverResult.winner);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- depend on values used only; session object would cause unnecessary runs
+  }, [
+    gamePhase,
+    gameOverResult,
+    session.isRankedGame,
+    session.reportGameResult,
+  ]);
 
   const setBoardAreaRef = useCallback((el: HTMLDivElement | null) => {
     setBoardContainer(el);
@@ -88,6 +119,7 @@ export default function App() {
     return (
       <MainMenu
         touchFriendly={isNarrow}
+        queueStatus={sync.queueStatus}
         onCreateGame={async () => {
           await sync.createGame();
           setGameMode("multiplayer");
@@ -97,6 +129,14 @@ export default function App() {
           await sync.joinGame(roomId);
           setGameMode("multiplayer");
           setScreen("game");
+        }}
+        onPlayRanked={async () => {
+          setRankedSearchStarted(true);
+          await sync.joinRankedQueue();
+        }}
+        onCancelRanked={() => {
+          setRankedSearchStarted(false);
+          sync.leaveRankedQueue();
         }}
         onRejoinAsHost={async (roomId) => {
           await sync.createGame(roomId);
