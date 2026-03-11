@@ -25,7 +25,7 @@ export interface GameScreenProps {
 }
 
 interface GameLocationState {
-  localPlayMode?: LocalPlayMode;
+  localPlayMode?: unknown;
 }
 
 const boardWrapperStyle: CSSProperties = {
@@ -43,7 +43,9 @@ const boardWrapperStyle: CSSProperties = {
 export function GameScreen({ sync, navigate }: GameScreenProps) {
   const location = useLocation();
   const state = location.state as GameLocationState | null;
-  const localPlayMode: LocalPlayMode = state?.localPlayMode ?? "vsBot";
+  const raw = state?.localPlayMode;
+  const localPlayMode: LocalPlayMode =
+    raw === "vsBot" || raw === "twoPlayers" ? raw : "vsBot";
   const gameMode = sync.roomId ? "multiplayer" : "local";
 
   const session = useGameSession(gameMode, sync, localPlayMode);
