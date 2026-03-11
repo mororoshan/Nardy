@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { useState } from "react";
 import { theme } from "../theme";
 import { getRoomFromUrl } from "../sync/roomUrl";
+import type { LeaderboardEntry } from "../sync/signalingClient";
 import { Button } from "./ui";
 import type { QueueStatus } from "../hooks/useWebRtcSync";
 
@@ -23,6 +24,16 @@ export interface MainMenuProps {
   /** Play offline, two players on same device (pass & play). */
   onTwoPlayers: () => void;
   touchFriendly?: boolean;
+  /** ELO rating from server (identified); shown in Connect section when set. */
+  playerRating?: number | null;
+  /** Open/fetch leaderboard (e.g. sync.fetchLeaderboard). */
+  onOpenLeaderboard?: () => void;
+  /** Leaderboard entries from last fetch; null until loaded or on error. */
+  leaderboardEntries?: LeaderboardEntry[] | null;
+  /** Error message from last leaderboard fetch. */
+  leaderboardError?: string | null;
+  /** True while leaderboard is loading. */
+  leaderboardLoading?: boolean;
 }
 
 const rootStyle: CSSProperties = {
@@ -135,11 +146,17 @@ export function MainMenu({
   onSinglePlayer,
   onTwoPlayers,
   touchFriendly = false,
+  playerRating = null,
+  onOpenLeaderboard,
+  leaderboardEntries = null,
+  leaderboardError = null,
+  leaderboardLoading = false,
 }: MainMenuProps) {
   const roomInUrl = getRoomFromUrl();
   const [joinRoomId, setJoinRoomId] = useState(roomInUrl ?? "");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
   const searching = queueStatus === "searching";
 
   const inputStyleResolved: CSSProperties = {
@@ -309,6 +326,17 @@ export function MainMenu({
                   ? "Joining…"
                   : "Play ranked"}
             </Button>
+            {playerRating != null && (
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.textMuted,
+                }}
+              >
+                Your rating: {playerRating}
+              </p>
+            )}
             {searching && onCancelRanked && (
               <Button
                 size="lg"
@@ -320,6 +348,120 @@ export function MainMenu({
               </Button>
             )}
           </>
+        )}
+        {onOpenLeaderboard && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: theme.spacing.sm,
+              alignItems: "center",
+            }}
+            role="group"
+            aria-label="Leaderboard"
+          >
+            <Button
+              size="lg"
+              variant="secondary"
+              onClick={() => {
+                setLeaderboardExpanded(true);
+                onOpenLeaderboard();
+              }}
+              disabled={leaderboardLoading || loading !== null}
+              style={touchTargetStyle}
+              title={
+                leaderboardExpanded ? "Leaderboard (shown)" : "Show leaderboard"
+              }
+            >
+              {leaderboardLoading ? "Loading…" : "Leaderboard"}
+            </Button>
+            {leaderboardError && (
+              <p
+                role="alert"
+                style={{
+                  margin: 0,
+                  fontSize: theme.fontSize.sm,
+                  color: theme.colors.error,
+                }}
+              >
+                {leaderboardError}
+              </p>
+            )}
+            {leaderboardExpanded &&
+              !leaderboardLoading &&
+              leaderboardEntries != null && (
+                <div
+                  style={{
+                    width: "100%",
+                    maxWidth: 320,
+                    maxHeight: 240,
+                    overflow: "auto",
+                    fontSize: theme.fontSize.sm,
+                    backgroundColor: theme.colors.surface,
+                    border: `1px solid ${theme.colors.border}`,
+                    borderRadius: theme.borderRadius.md,
+                    padding: theme.spacing.sm,
+                  }}
+                >
+                  <table
+                    style={{ width: "100%", borderCollapse: "collapse" }}
+                    aria-label="Leaderboard"
+                  >
+                    <thead>
+                      <tr>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: theme.spacing.xs,
+                            color: theme.colors.textMuted,
+                          }}
+                        >
+                          Rank
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: theme.spacing.xs,
+                            color: theme.colors.textMuted,
+                          }}
+                        >
+                          Name
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "right",
+                            padding: theme.spacing.xs,
+                            color: theme.colors.textMuted,
+                          }}
+                        >
+                          Rating
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leaderboardEntries.map((entry) => (
+                        <tr key={entry.playerId}>
+                          <td style={{ padding: theme.spacing.xs }}>
+                            {entry.rank}
+                          </td>
+                          <td style={{ padding: theme.spacing.xs }}>
+                            {entry.displayName || entry.playerId}
+                          </td>
+                          <td
+                            style={{
+                              padding: theme.spacing.xs,
+                              textAlign: "right",
+                            }}
+                          >
+                            {entry.rating}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+          </div>
         )}
         <Button
           size="lg"

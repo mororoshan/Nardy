@@ -1,6 +1,8 @@
 /**
- * Persistent player identity for ranked matchmaking.
- * playerId is stable across sessions; displayName can be changed by the user.
+ * Player identity for ranked matchmaking.
+ * playerId is stored in sessionStorage so each tab/session has a unique ID
+ * (enables testing with 2 tabs; guarantees uniqueness per session).
+ * displayName can be changed by the user and persists in localStorage.
  */
 
 const PLAYER_ID_KEY = "nardi-player-id";
@@ -11,14 +13,14 @@ function generateId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-/** Returns a stable player ID (creates and stores one if missing). */
+/** Returns a session-scoped player ID (creates and stores one if missing). Unique per tab. */
 export function getOrCreatePlayerId(): string {
   if (typeof window === "undefined") return generateId();
   try {
-    let id = localStorage.getItem(PLAYER_ID_KEY);
+    let id = sessionStorage.getItem(PLAYER_ID_KEY);
     if (!id || id.length < 5) {
       id = generateId();
-      localStorage.setItem(PLAYER_ID_KEY, id);
+      sessionStorage.setItem(PLAYER_ID_KEY, id);
     }
     return id;
   } catch {

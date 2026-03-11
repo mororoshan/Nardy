@@ -293,6 +293,17 @@ export function GameSidebar({
             </Button>
           </div>
         )}
+        {session.isRankedGame && session.playerRating != null && (
+          <p
+            style={{
+              margin: 0,
+              fontSize: theme.fontSize.xs,
+              color: theme.colors.textMuted,
+            }}
+          >
+            Rating: {session.playerRating}
+          </p>
+        )}
         {canShare && (
           <div style={shareRowStyle}>
             <Button

@@ -120,6 +120,11 @@ export default function App() {
       <MainMenu
         touchFriendly={isNarrow}
         queueStatus={sync.queueStatus}
+        playerRating={sync.playerRating}
+        onOpenLeaderboard={() => sync.fetchLeaderboard()}
+        leaderboardEntries={sync.leaderboardEntries}
+        leaderboardError={sync.leaderboardError}
+        leaderboardLoading={sync.leaderboardLoading}
         onCreateGame={async () => {
           await sync.createGame();
           setGameMode("multiplayer");

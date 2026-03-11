@@ -1,8 +1,29 @@
 /**
  * WebSocket client for WebRTC signaling: create/join rooms and forward SDP/ICE.
- * Protocol: docs/SIGNAL_SERVER_README.md
+ * Protocol: docs/SIGNALING_API.md
  * Ranked: queue.join, queue.leave, match.found, game.result (see server agent spec).
  */
+
+/** Payload sent by server after successful identify (see SIGNALING_API.md). */
+export interface IdentifiedPayload {
+  playerId: string;
+  displayName?: string;
+  /** ELO rating from DB (e.g. 1200 for new players). */
+  rating: number;
+}
+
+/** One entry in leaderboard response. */
+export interface LeaderboardEntry {
+  playerId: string;
+  displayName: string;
+  rating: number;
+  rank: number;
+}
+
+/** Payload of server leaderboard response. */
+export interface LeaderboardPayload {
+  entries: LeaderboardEntry[];
+}
 
 /** Payload sent by server when a ranked match is found. */
 export interface MatchFoundPayload {
@@ -17,12 +38,14 @@ export interface SignalingCallbacks {
   onPeerJoined?: () => void;
   onSignal?: (data: unknown) => void;
   onPeerLeft?: () => void;
-  onError?: (message: string) => void;
+  onError?: (message: string, code?: string) => void;
   onClose?: () => void;
   /** Ranked: server acknowledged identify; safe to send queue.join. */
-  onIdentified?: () => void;
-  /** Ranked: server assigned a room and role; client should create or join the room. */
+  onIdentified?: (payload: IdentifiedPayload) => void;
+  /** Ranked: server assigned a room and role; both peers are already in the room—set up WebRTC only, do not send create/join. */
   onMatchFound?: (payload: MatchFoundPayload) => void;
+  /** Ranked: leaderboard response after leaderboard request. */
+  onLeaderboard?: (payload: LeaderboardPayload) => void;
 }
 
 export class SignalingClient {
@@ -86,12 +109,60 @@ export class SignalingClient {
       case "peer_left":
         this.callbacks.onPeerLeft?.();
         break;
-      case "error":
-        if (typeof o.message === "string") this.callbacks.onError?.(o.message);
+      case "error": {
+        if (typeof o.message !== "string") break;
+        const payload = o.payload as Record<string, unknown> | undefined;
+        const code =
+          typeof payload?.code === "string" ? payload.code : undefined;
+        this.callbacks.onError?.(o.message, code);
         break;
-      case "identified":
-        this.callbacks.onIdentified?.();
+      }
+      case "identified": {
+        const playerId =
+          typeof o.playerId === "string" && o.playerId.length > 0
+            ? o.playerId
+            : "";
+        if (playerId === "") break;
+        const displayName =
+          typeof o.displayName === "string" ? o.displayName : undefined;
+        const rawRating = o.rating;
+        const rating =
+          typeof rawRating === "number" && Number.isFinite(rawRating)
+            ? rawRating
+            : 1200;
+        this.callbacks.onIdentified?.({ playerId, displayName, rating });
         break;
+      }
+      case "leaderboard": {
+        const payload = o.payload as Record<string, unknown> | undefined;
+        const rawEntries = payload?.entries;
+        if (!Array.isArray(rawEntries)) break;
+        const entries: LeaderboardEntry[] = [];
+        for (const item of rawEntries) {
+          if (item === null || typeof item !== "object") continue;
+          const e = item as Record<string, unknown>;
+          const pid = typeof e.playerId === "string" ? e.playerId : "";
+          const dname = typeof e.displayName === "string" ? e.displayName : "";
+          const r =
+            typeof e.rating === "number" && Number.isFinite(e.rating)
+              ? e.rating
+              : 0;
+          const rank =
+            typeof e.rank === "number" &&
+            Number.isInteger(e.rank) &&
+            e.rank >= 0
+              ? e.rank
+              : 0;
+          entries.push({
+            playerId: pid,
+            displayName: dname,
+            rating: r,
+            rank,
+          });
+        }
+        this.callbacks.onLeaderboard?.({ entries });
+        break;
+      }
       case "match.found": {
         const payload = (o.payload as Record<string, unknown> | undefined) ?? o;
         const roomId =
@@ -188,17 +259,32 @@ export class SignalingClient {
     this.ws.send(JSON.stringify(msg));
   }
 
-  /** Ranked: report game result so server can update ELO. */
-  sendGameResult(roomId: string, winnerId: string, loserId: string): void {
+  /** Request leaderboard (requires prior identify). limit 1–100, default 50; offset for pagination. */
+  requestLeaderboard(limit: number = 50, offset: number = 0): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    const lim = Math.max(1, Math.min(100, Math.floor(limit)));
+    const off = Math.max(0, Math.floor(offset));
+    this.ws.send(
+      JSON.stringify({
+        type: "leaderboard",
+        payload: { limit: lim, offset: off },
+      }),
+    );
+  }
+
+  /** Ranked: report game result so server can update ELO. Payload shape per SIGNALING_API. */
+  sendGameResult(
+    roomId: string,
+    winnerId: string,
+    loserId: string,
+    mode: string = "ranked-classic",
+  ): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     if (!winnerId || !loserId || winnerId === loserId) return;
     this.ws.send(
       JSON.stringify({
         type: "game.result",
-        roomId,
-        winnerId,
-        loserId,
-        timestamp: Date.now(),
+        payload: { roomId, winnerId, loserId, mode },
       }),
     );
   }

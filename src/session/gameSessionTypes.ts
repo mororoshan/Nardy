@@ -42,4 +42,6 @@ export interface NardiGameSession {
   isRankedGame?: boolean;
   /** Report game result to server for ELO (ranked only). Call when phase is gameOver. */
   reportGameResult?: (winner: Player) => void;
+  /** ELO rating from server (identified); shown in sidebar for ranked games when set. */
+  playerRating?: number | null;
 }

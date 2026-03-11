@@ -28,7 +28,11 @@ import {
 import { setRoomInUrl } from "../sync/roomUrl";
 import { setLastRoom, getLastRoom } from "../sync/lastRoomStorage";
 import { getOrCreatePlayerId, getDisplayName } from "../sync/playerIdentity";
-import type { MatchFoundPayload } from "../sync/signalingClient";
+import type {
+  IdentifiedPayload,
+  LeaderboardEntry,
+  MatchFoundPayload,
+} from "../sync/signalingClient";
 import {
   parseSyncMessage,
   SyncMessageType,
@@ -82,6 +86,12 @@ export interface RankedMatchInfo {
   blackPlayerId: string;
 }
 
+/** Last error from signaling in ranked flow (e.g. queue.not_identified). */
+export interface LastSignalingError {
+  message: string;
+  code?: string;
+}
+
 export type QueueStatus = "idle" | "searching";
 
 export interface UseWebRtcSyncResult {
@@ -106,6 +116,18 @@ export interface UseWebRtcSyncResult {
   rejoinFromLastRoom: () => Promise<void>;
   /** True when sessionStorage has a last room (e.g. after disconnect). */
   canRejoin: boolean;
+  /** Ranked: ELO rating from server (identified payload); null until identified or after cleanup. */
+  playerRating: number | null;
+  /** Ranked: fetch leaderboard (opens temp connection: identify → requestLeaderboard → close). */
+  fetchLeaderboard: (limit?: number, offset?: number) => Promise<void>;
+  /** Leaderboard entries from last successful fetch; null until loaded or on error. */
+  leaderboardEntries: LeaderboardEntry[] | null;
+  /** Error message from last leaderboard fetch; null when not fetched or success. */
+  leaderboardError: string | null;
+  /** True while a leaderboard fetch is in progress. */
+  leaderboardLoading: boolean;
+  /** Last error from signaling in ranked flow (e.g. queue.not_identified); null when cleared or on success. */
+  lastSignalingError: LastSignalingError | null;
   /** Ranked: call when game ends so server can update ELO. Reported once per ranked session (first game). No-op if not ranked or already reported. */
   reportGameResult: (winner: Player) => void;
   sendDice: (dice: [number, number]) => void;
@@ -130,6 +152,14 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     useState<ConnectionQualityValue>(ConnectionQuality.Offline);
   const [queueStatus, setQueueStatus] = useState<QueueStatus>("idle");
   const [isRankedGame, setIsRankedGame] = useState(false);
+  const [playerRating, setPlayerRating] = useState<number | null>(null);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<
+    LeaderboardEntry[] | null
+  >(null);
+  const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [lastSignalingError, setLastSignalingError] =
+    useState<LastSignalingError | null>(null);
 
   const signalingRef = useRef<SignalingClient | null>(null);
   const connectionRef = useRef<WebRtcConnectionHandle | null>(null);
@@ -148,6 +178,8 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
   const rankedMatchInfoRef = useRef<RankedMatchInfo | null>(null);
   /** Avoid sending game.result more than once per game. */
   const gameResultReportedRef = useRef(false);
+  /** Used by fetchLeaderboard to avoid setState after unmount. */
+  const mountedRef = useRef(true);
   roomIdRef.current = roomId;
   isCreatorRef.current = isCreator;
 
@@ -157,6 +189,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     gameResultReportedRef.current = false;
     setQueueStatus("idle");
     setIsRankedGame(false);
+    setPlayerRating(null);
     const lastId = roomIdRef.current;
     const lastCreator = isCreatorRef.current;
     if (lastId != null && lastCreator != null) {
@@ -526,59 +559,56 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       const signaling = signalingRef.current;
       if (!signaling) return;
 
+      // Per SIGNALING_API: after match.found both peers are already in the room;
+      // do not send create or join. Set up WebRTC (offer/answer) and signal callbacks only.
+      const sendSignal = (data: unknown) =>
+        signalingRef.current?.sendSignal(data);
+
       if (payload.myRole === "creator") {
+        const conn = createOfferer(sendSignal);
+        connectionRef.current = conn;
+        conn.onOpen(() => {
+          setConnectionStatus(ConnectionStatus.Connected);
+          const current = useNardiGameStore.getState().state;
+          const isFresh =
+            current.phase === "firstRoll" &&
+            current.firstRollDice.white === null &&
+            current.firstRollDice.black === null;
+          const state = isFresh
+            ? createInitialState()
+            : useNardiGameStore.getState().state;
+          if (isFresh)
+            useNardiGameStore.setState({ state, selectedPoint: null });
+          conn.send({ type: SyncMessageType.State, state });
+        });
+        conn.onMessage((s) => handleMessage(s));
+        conn.onClose(() => {
+          const rid = roomIdRef.current;
+          const creator = isCreatorRef.current;
+          if (rid == null || creator == null) {
+            cleanup();
+            return;
+          }
+          reconnectingRef.current = true;
+          const connToClose = connectionRef.current;
+          const sigToClose = signalingRef.current;
+          connectionRef.current = null;
+          signalingRef.current = null;
+          connToClose?.close();
+          sigToClose?.leave();
+          sigToClose?.close();
+          hasReceivedStateRef.current = false;
+          setConnectionStatus(ConnectionStatus.Reconnecting);
+          setConnectionQuality(ConnectionQuality.Offline);
+          setRoomId(rid);
+          setIsCreator(creator);
+          if (reconnectTimeoutRef.current != null) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+          }
+          scheduleReconnect(rid, creator);
+        });
         signaling.setCallbacks({
-          onCreated: (id) => {
-            setRoomId(id);
-            setRoomInUrl(id);
-          },
-          onPeerJoined: () => {
-            const sendSignal = (data: unknown) =>
-              signalingRef.current?.sendSignal(data);
-            const conn = createOfferer(sendSignal);
-            connectionRef.current = conn;
-            conn.onOpen(() => {
-              setConnectionStatus(ConnectionStatus.Connected);
-              const current = useNardiGameStore.getState().state;
-              const isFresh =
-                current.phase === "firstRoll" &&
-                current.firstRollDice.white === null &&
-                current.firstRollDice.black === null;
-              const state = isFresh
-                ? createInitialState()
-                : useNardiGameStore.getState().state;
-              if (isFresh)
-                useNardiGameStore.setState({ state, selectedPoint: null });
-              conn.send({ type: SyncMessageType.State, state });
-            });
-            conn.onMessage((s) => handleMessage(s));
-            conn.onClose(() => {
-              const rid = roomIdRef.current;
-              const creator = isCreatorRef.current;
-              if (rid == null || creator == null) {
-                cleanup();
-                return;
-              }
-              reconnectingRef.current = true;
-              const connToClose = connectionRef.current;
-              const sigToClose = signalingRef.current;
-              connectionRef.current = null;
-              signalingRef.current = null;
-              connToClose?.close();
-              sigToClose?.leave();
-              sigToClose?.close();
-              hasReceivedStateRef.current = false;
-              setConnectionStatus(ConnectionStatus.Reconnecting);
-              setConnectionQuality(ConnectionQuality.Offline);
-              setRoomId(rid);
-              setIsCreator(creator);
-              if (reconnectTimeoutRef.current != null) {
-                clearTimeout(reconnectTimeoutRef.current);
-                reconnectTimeoutRef.current = null;
-              }
-              scheduleReconnect(rid, creator);
-            });
-          },
           onSignal: (data) => connectionRef.current?.receiveSignal(data),
           onPeerLeft: cleanup,
           onError: () => cleanup(),
@@ -587,10 +617,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
             cleanup();
           },
         });
-        signaling.createRoom(payload.roomId);
       } else {
-        const sendSignal = (data: unknown) =>
-          signalingRef.current?.sendSignal(data);
         const conn = createAnswerer(sendSignal);
         connectionRef.current = conn;
         conn.onOpen(() => {
@@ -625,7 +652,6 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           scheduleReconnect(rid, creator);
         });
         signaling.setCallbacks({
-          onJoined: () => {},
           onSignal: (data) => conn.receiveSignal(data),
           onPeerLeft: cleanup,
           onError: () => cleanup(),
@@ -634,7 +660,6 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
             cleanup();
           },
         });
-        signaling.joinRoom(payload.roomId);
       }
     },
     [cleanup, handleMessage, scheduleReconnect],
@@ -642,6 +667,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
 
   const joinRankedQueue = useCallback(async () => {
     cleanup();
+    setLastSignalingError(null);
     setConnectionStatus(ConnectionStatus.Connecting);
     setQueueStatus("searching");
     const signaling = new SignalingClient(getSignalingUrl());
@@ -656,11 +682,14 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     const playerId = getOrCreatePlayerId();
     const displayName = getDisplayName();
     signaling.setCallbacks({
-      onIdentified: () => {
+      onIdentified: (payload: IdentifiedPayload) => {
+        setPlayerRating(payload.rating);
+        setLastSignalingError(null);
         signaling.queueJoin(RANKED_QUEUE_MODE);
       },
       onMatchFound: (payload) => setupRoomAfterMatchFound(payload),
-      onError: () => {
+      onError: (message: string, code?: string) => {
+        setLastSignalingError({ message, code });
         setQueueStatus("idle");
         cleanup();
       },
@@ -674,10 +703,55 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
 
   const leaveRankedQueue = useCallback(() => {
     if (queueStatus === "searching") {
-      signalingRef.current?.queueLeave();
+      signalingRef.current?.queueLeave(RANKED_QUEUE_MODE);
     }
     cleanup();
   }, [cleanup, queueStatus]);
+
+  const fetchLeaderboard = useCallback(
+    async (limit?: number, offset?: number) => {
+      setLeaderboardLoading(true);
+      setLeaderboardError(null);
+      setLeaderboardEntries(null);
+
+      const client = new SignalingClient(getSignalingUrl());
+      try {
+        await client.connect();
+      } catch {
+        if (mountedRef.current) {
+          setLeaderboardError("Failed to connect to server");
+          setLeaderboardLoading(false);
+        }
+        return;
+      }
+
+      client.setCallbacks({
+        onIdentified: () => {
+          client.requestLeaderboard(limit ?? 50, offset ?? 0);
+        },
+        onLeaderboard: (payload) => {
+          if (mountedRef.current) {
+            setLeaderboardEntries([...payload.entries]);
+            setLeaderboardLoading(false);
+          }
+          client.close();
+        },
+        onError: (message: string) => {
+          if (mountedRef.current) {
+            setLeaderboardError(message || "Failed to load leaderboard");
+            setLeaderboardLoading(false);
+          }
+          client.close();
+        },
+        onClose: () => {
+          if (mountedRef.current) setLeaderboardLoading(false);
+        },
+      });
+
+      client.identify(getOrCreatePlayerId(), getDisplayName());
+    },
+    [],
+  );
 
   const reportGameResult = useCallback((winner: Player) => {
     if (gameResultReportedRef.current) return;
@@ -688,7 +762,12 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       winner === "white" ? info.whitePlayerId : info.blackPlayerId;
     const loserId =
       winner === "white" ? info.blackPlayerId : info.whitePlayerId;
-    signalingRef.current?.sendGameResult(rid, winnerId, loserId);
+    signalingRef.current?.sendGameResult(
+      rid,
+      winnerId,
+      loserId,
+      RANKED_QUEUE_MODE,
+    );
     gameResultReportedRef.current = true;
     rankedMatchInfoRef.current = null;
   }, []);
@@ -699,7 +778,9 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
   }, [createGame, joinGame]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
+      mountedRef.current = false;
       if (reconnectTimeoutRef.current != null) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
@@ -818,6 +899,12 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     localPlayer,
     queueStatus,
     isRankedGame,
+    playerRating,
+    fetchLeaderboard,
+    leaderboardEntries,
+    leaderboardError,
+    leaderboardLoading,
+    lastSignalingError,
     createGame,
     joinGame,
     joinRankedQueue,
