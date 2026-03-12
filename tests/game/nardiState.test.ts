@@ -4,7 +4,7 @@ import {
   getLegalMoves,
   pickHintMove,
   type NardiState,
-} from "./nardiState";
+} from "../../src/game/nardiState";
 
 function playingState(overrides: Partial<NardiState> = {}): NardiState {
   const s = createInitialState();

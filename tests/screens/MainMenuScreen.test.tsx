@@ -4,8 +4,8 @@
 
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
-import type { UseWebRtcSyncResult } from "../hooks/useWebRtcSync";
-import { MainMenuScreen } from "./MainMenuScreen";
+import type { UseWebRtcSyncResult } from "../../src/hooks/useWebRtcSync";
+import { MainMenuScreen } from "../../src/screens/MainMenuScreen";
 
 function createMockSync(): UseWebRtcSyncResult {
   return {
@@ -54,6 +54,9 @@ describe("MainMenuScreen", () => {
       />,
     );
 
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "Backgammon",
+    );
     expect(screen.getByText("Two players")).toBeTruthy();
   });
 });

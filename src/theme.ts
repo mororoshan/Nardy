@@ -37,4 +37,14 @@ export const theme = {
   },
   /** Duration in ms for piece move animation. */
   moveAnimationMs: 280,
+  /** Main menu overlay and buttons (backgammon-style). */
+  menu: {
+    backgroundOverlay: "rgba(30, 42, 58, 0.95)",
+    gold: "#c9a227",
+    goldMuted: "#e8d5a3",
+    buttonBg: "#1e2a3a",
+    rejoinHighlight: "#6b4bb3",
+    inputBg: "#0f1419",
+    woodBorder: "#4a3728",
+  },
 } as const;

@@ -4,8 +4,11 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import type { IdentifiedPayload, LeaderboardPayload } from "./signalingClient";
-import { SignalingClient } from "./signalingClient";
+import type {
+  IdentifiedPayload,
+  LeaderboardPayload,
+} from "../../src/sync/signalingClient";
+import { SignalingClient } from "../../src/sync/signalingClient";
 
 const mockWsInstances: MockWebSocket[] = [];
 

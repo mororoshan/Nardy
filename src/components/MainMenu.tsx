@@ -37,102 +37,88 @@ export interface MainMenuProps {
 }
 
 const rootStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "row",
   minHeight: "100vh",
   width: "100%",
-  backgroundColor: theme.colors.background,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: theme.spacing.lg,
   color: theme.colors.text,
 };
 
-const rootStyleNarrow: CSSProperties = {
-  flexDirection: "column",
-};
-
-const panelBase: CSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: theme.spacing.lg,
-  padding: theme.spacing.xl,
-};
-
-const playPanelStyle: CSSProperties = {
-  ...panelBase,
-  backgroundColor: theme.colors.surface,
-  borderRight: `1px solid ${theme.colors.sidebarBorder}`,
-};
-
-const playPanelStyleNarrow: CSSProperties = {
-  borderRight: "none",
-  borderBottom: `1px solid ${theme.colors.sidebarBorder}`,
-};
-
-const connectPanelStyle: CSSProperties = {
-  ...panelBase,
-  backgroundColor: theme.colors.background,
-};
-
-const barStyle: CSSProperties = {
-  flexShrink: 0,
-  width: 48,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: theme.colors.surfaceElevated,
-  padding: theme.spacing.lg,
-};
-
-const barStyleNarrow: CSSProperties = {
+const cardStyle: CSSProperties = {
+  backgroundColor: theme.menu.backgroundOverlay,
+  borderRadius: 16,
+  border: `3px solid ${theme.menu.woodBorder}`,
+  outline: `1px solid ${theme.menu.gold}`,
+  outlineOffset: 2,
+  padding: theme.spacing.xl * 2,
+  maxWidth: 560,
   width: "100%",
-  minHeight: 56,
-  padding: theme.spacing.md,
+  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
 };
 
 const titleStyle: CSSProperties = {
-  fontSize: 22,
+  color: theme.menu.gold,
+  fontSize: 32,
   fontWeight: 600,
-  color: theme.colors.text,
+  fontFamily: "Georgia, serif",
   margin: 0,
-  writingMode: "vertical-rl" as const,
-  textOrientation: "mixed",
-  letterSpacing: "0.05em",
-  transform: "rotate(180deg)",
+  marginBottom: theme.spacing.xl,
+  textAlign: "center",
 };
 
-const titleStyleNarrow: CSSProperties = {
-  writingMode: "horizontal-tb",
-  transform: "none",
-  letterSpacing: "normal",
+const columnsStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "row",
+  gap: theme.spacing.xl,
+  alignItems: "flex-start",
 };
 
-const sectionLabelStyle: CSSProperties = {
+const columnsStyleNarrow: CSSProperties = {
+  flexDirection: "column",
+};
+
+const sectionBase: CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: theme.spacing.lg,
+};
+
+const sectionHeadingStyle: CSSProperties = {
   fontSize: theme.fontSize.sm,
   fontWeight: 600,
-  color: theme.colors.textMuted,
-  textTransform: "uppercase" as const,
+  color: theme.menu.gold,
+  textTransform: "uppercase",
   letterSpacing: "0.08em",
   margin: 0,
   marginBottom: theme.spacing.xs,
+  paddingBottom: theme.spacing.xs,
+  borderBottom: `1px solid ${theme.menu.gold}`,
+  width: "100%",
+  textAlign: "center",
 };
 
-const inputStyle: CSSProperties = {
-  padding: "10px 14px",
-  fontSize: theme.fontSize.lg,
-  backgroundColor: theme.colors.surface,
-  color: theme.colors.text,
-  border: `1px solid ${theme.colors.border}`,
+const menuButtonStyle: CSSProperties = {
+  backgroundColor: theme.menu.buttonBg,
+  color: theme.menu.goldMuted,
+  border: `1px solid ${theme.menu.gold}`,
   borderRadius: theme.borderRadius.md,
-  minWidth: 200,
+};
+
+const rejoinButtonStyle: CSSProperties = {
+  ...menuButtonStyle,
+  backgroundColor: theme.menu.rejoinHighlight,
 };
 
 const rowStyle: CSSProperties = {
   display: "flex",
   gap: theme.spacing.sm,
   alignItems: "center",
-  flexWrap: "wrap" as const,
+  flexWrap: "wrap",
   justifyContent: "center",
 };
 
@@ -158,14 +144,22 @@ export function MainMenu({
   const [error, setError] = useState<string | null>(null);
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
   const searching = queueStatus === "searching";
+  const isNarrow = touchFriendly;
 
-  const inputStyleResolved: CSSProperties = {
-    ...inputStyle,
-    ...(touchFriendly && { minHeight: MIN_TOUCH_HEIGHT }),
-  };
-  const touchTargetStyle = touchFriendly
+  const touchTargetStyle: CSSProperties | undefined = touchFriendly
     ? { minHeight: MIN_TOUCH_HEIGHT }
     : undefined;
+
+  const inputStyle: CSSProperties = {
+    padding: "10px 14px",
+    fontSize: theme.fontSize.lg,
+    backgroundColor: theme.menu.inputBg,
+    color: theme.colors.text,
+    border: `1px solid ${theme.menu.gold}`,
+    borderRadius: theme.borderRadius.md,
+    minWidth: 200,
+    ...(touchFriendly && { minHeight: MIN_TOUCH_HEIGHT }),
+  };
 
   const handleCreate = async () => {
     setError(null);
@@ -222,320 +216,294 @@ export function MainMenu({
     }
   };
 
-  const isNarrow = touchFriendly;
-
   return (
-    <main
-      style={{
-        ...rootStyle,
-        ...(isNarrow ? rootStyleNarrow : {}),
-      }}
-    >
-      <section
-        aria-labelledby="play-heading"
-        style={{
-          ...playPanelStyle,
-          ...(isNarrow ? playPanelStyleNarrow : {}),
-          ...(isNarrow && {
-            gap: theme.spacing.xl,
-            padding: theme.spacing.xl * 1.5,
-          }),
-        }}
-      >
-        <h2 id="play-heading" style={sectionLabelStyle}>
-          Play
-        </h2>
-        <Button
-          size="lg"
-          onClick={onSinglePlayer}
-          disabled={loading !== null}
-          style={touchTargetStyle}
-          title="Play vs computer (you are White)"
-        >
-          Vs bot
-        </Button>
-        <Button
-          size="lg"
-          variant="secondary"
-          onClick={onTwoPlayers}
-          disabled={loading !== null}
-          style={touchTargetStyle}
-          title="Two players on this device (pass and play)"
-        >
-          Two players
-        </Button>
-      </section>
-
-      <div
-        style={{
-          ...barStyle,
-          ...(isNarrow ? barStyleNarrow : {}),
-        }}
-      >
-        <h1
+    <main style={rootStyle}>
+      <div style={cardStyle}>
+        <h1 style={titleStyle}>Backgammon</h1>
+        <div
           style={{
-            ...titleStyle,
-            ...(isNarrow ? titleStyleNarrow : {}),
+            ...columnsStyle,
+            ...(isNarrow ? columnsStyleNarrow : {}),
           }}
         >
-          Nardi
-        </h1>
-      </div>
-
-      <section
-        aria-labelledby="connect-heading"
-        style={{
-          ...connectPanelStyle,
-          ...(isNarrow && {
-            gap: theme.spacing.xl,
-            padding: theme.spacing.xl * 1.5,
-          }),
-        }}
-      >
-        <h2 id="connect-heading" style={sectionLabelStyle}>
-          Connect
-        </h2>
-        {onPlayRanked && (
-          <>
+          <section aria-labelledby="play-heading" style={sectionBase}>
+            <h2 id="play-heading" style={sectionHeadingStyle}>
+              PLAY
+            </h2>
             <Button
               size="lg"
-              onClick={async () => {
-                setError(null);
-                setLoading("ranked");
-                try {
-                  await onPlayRanked();
-                  setLoading(null);
-                } catch (e) {
-                  setError(
-                    e instanceof Error ? e.message : "Failed to join queue",
-                  );
-                  setLoading(null);
-                }
-              }}
-              disabled={loading !== null || searching}
-              style={{
-                ...touchTargetStyle,
-                ...(searching
-                  ? { backgroundColor: theme.colors.surfaceElevated }
-                  : {}),
-              }}
+              onClick={onSinglePlayer}
+              disabled={loading !== null}
+              style={{ ...menuButtonStyle, ...touchTargetStyle }}
+              title="Play vs computer (you are White)"
             >
-              {searching
-                ? "Searching for match…"
-                : loading === "ranked"
-                  ? "Joining…"
-                  : "Play ranked"}
+              Vs bot
             </Button>
-            {playerRating != null && (
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: theme.fontSize.sm,
-                  color: theme.colors.textMuted,
-                }}
-              >
-                Your rating: {playerRating}
-              </p>
+            <Button
+              size="lg"
+              onClick={onTwoPlayers}
+              disabled={loading !== null}
+              style={{ ...menuButtonStyle, ...touchTargetStyle }}
+              title="Two players on this device (pass and play)"
+            >
+              Two players
+            </Button>
+          </section>
+
+          <section
+            aria-labelledby="connect-heading"
+            style={{
+              ...sectionBase,
+              ...(isNarrow && { gap: theme.spacing.xl }),
+            }}
+          >
+            <h2 id="connect-heading" style={sectionHeadingStyle}>
+              CONNECT
+            </h2>
+            {onPlayRanked && (
+              <>
+                <Button
+                  size="lg"
+                  onClick={async () => {
+                    setError(null);
+                    setLoading("ranked");
+                    try {
+                      await onPlayRanked();
+                      setLoading(null);
+                    } catch (e) {
+                      setError(
+                        e instanceof Error ? e.message : "Failed to join queue",
+                      );
+                      setLoading(null);
+                    }
+                  }}
+                  disabled={loading !== null || searching}
+                  style={{
+                    ...menuButtonStyle,
+                    ...touchTargetStyle,
+                    ...(searching
+                      ? { backgroundColor: theme.colors.surfaceElevated }
+                      : {}),
+                  }}
+                >
+                  {searching
+                    ? "Searching for match…"
+                    : loading === "ranked"
+                      ? "Joining…"
+                      : "Play ranked"}
+                </Button>
+                {playerRating != null && (
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: theme.fontSize.sm,
+                      color: theme.menu.goldMuted,
+                    }}
+                  >
+                    Your rating: {playerRating}
+                  </p>
+                )}
+                {searching && onCancelRanked && (
+                  <Button
+                    size="lg"
+                    onClick={onCancelRanked}
+                    style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </>
             )}
-            {searching && onCancelRanked && (
+            {onOpenLeaderboard && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: theme.spacing.sm,
+                  alignItems: "center",
+                }}
+                role="group"
+                aria-label="Leaderboard"
+              >
+                <Button
+                  size="lg"
+                  onClick={() => {
+                    setLeaderboardExpanded(true);
+                    onOpenLeaderboard();
+                  }}
+                  disabled={leaderboardLoading || loading !== null}
+                  style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                  title={
+                    leaderboardExpanded
+                      ? "Leaderboard (shown)"
+                      : "Show leaderboard"
+                  }
+                >
+                  {leaderboardLoading ? "Loading…" : "Leaderboard"}
+                </Button>
+                {leaderboardError && (
+                  <p
+                    role="alert"
+                    style={{
+                      margin: 0,
+                      fontSize: theme.fontSize.sm,
+                      color: theme.colors.error,
+                    }}
+                  >
+                    {leaderboardError}
+                  </p>
+                )}
+                {leaderboardExpanded &&
+                  !leaderboardLoading &&
+                  leaderboardEntries != null && (
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: 320,
+                        maxHeight: 240,
+                        overflow: "auto",
+                        fontSize: theme.fontSize.sm,
+                        backgroundColor: theme.menu.inputBg,
+                        border: `1px solid ${theme.menu.gold}`,
+                        borderRadius: theme.borderRadius.md,
+                        padding: theme.spacing.sm,
+                      }}
+                    >
+                      <table
+                        style={{ width: "100%", borderCollapse: "collapse" }}
+                        aria-label="Leaderboard"
+                      >
+                        <thead>
+                          <tr>
+                            <th
+                              style={{
+                                textAlign: "left",
+                                padding: theme.spacing.xs,
+                                color: theme.menu.goldMuted,
+                              }}
+                            >
+                              Rank
+                            </th>
+                            <th
+                              style={{
+                                textAlign: "left",
+                                padding: theme.spacing.xs,
+                                color: theme.menu.goldMuted,
+                              }}
+                            >
+                              Name
+                            </th>
+                            <th
+                              style={{
+                                textAlign: "right",
+                                padding: theme.spacing.xs,
+                                color: theme.menu.goldMuted,
+                              }}
+                            >
+                              Rating
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leaderboardEntries.map((entry) => (
+                            <tr key={entry.playerId}>
+                              <td style={{ padding: theme.spacing.xs }}>
+                                {entry.rank}
+                              </td>
+                              <td style={{ padding: theme.spacing.xs }}>
+                                {entry.displayName || entry.playerId}
+                              </td>
+                              <td
+                                style={{
+                                  padding: theme.spacing.xs,
+                                  textAlign: "right",
+                                }}
+                              >
+                                {entry.rating}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+              </div>
+            )}
+            <Button
+              size="lg"
+              onClick={handleCreate}
+              disabled={loading !== null || searching}
+              style={{ ...menuButtonStyle, ...touchTargetStyle }}
+            >
+              {loading === "create" ? "Creating…" : "Create game"}
+            </Button>
+            <div style={rowStyle}>
+              <input
+                type="text"
+                aria-label="Room code"
+                placeholder="Room code"
+                value={joinRoomId}
+                onChange={(e) => setJoinRoomId(e.target.value)}
+                style={inputStyle}
+                disabled={loading !== null}
+              />
               <Button
                 size="lg"
-                variant="secondary"
-                onClick={onCancelRanked}
-                style={touchTargetStyle}
+                onClick={handleJoin}
+                disabled={loading !== null}
+                style={{ ...menuButtonStyle, ...touchTargetStyle }}
               >
-                Cancel
+                {loading === "join" ? "Joining…" : "Join game"}
               </Button>
+            </div>
+            {roomInUrl && (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: theme.spacing.sm,
+                  alignItems: "center",
+                }}
+              >
+                <Button
+                  size="lg"
+                  onClick={handleRejoin}
+                  disabled={loading !== null}
+                  style={{ ...rejoinButtonStyle, ...touchTargetStyle }}
+                >
+                  {loading === "rejoin"
+                    ? "Rejoining…"
+                    : `Rejoin (${roomInUrl})`}
+                </Button>
+                {onRejoinAsHost && (
+                  <Button
+                    size="lg"
+                    onClick={handleRejoinAsHost}
+                    disabled={loading !== null}
+                    style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                  >
+                    {loading === "rejoinHost"
+                      ? "Recreating…"
+                      : "Rejoin as host"}
+                  </Button>
+                )}
+              </div>
             )}
-          </>
-        )}
-        {onOpenLeaderboard && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: theme.spacing.sm,
-              alignItems: "center",
-            }}
-            role="group"
-            aria-label="Leaderboard"
-          >
-            <Button
-              size="lg"
-              variant="secondary"
-              onClick={() => {
-                setLeaderboardExpanded(true);
-                onOpenLeaderboard();
-              }}
-              disabled={leaderboardLoading || loading !== null}
-              style={touchTargetStyle}
-              title={
-                leaderboardExpanded ? "Leaderboard (shown)" : "Show leaderboard"
-              }
-            >
-              {leaderboardLoading ? "Loading…" : "Leaderboard"}
-            </Button>
-            {leaderboardError && (
+            {error && (
               <p
                 role="alert"
                 style={{
+                  color: theme.colors.error,
                   margin: 0,
                   fontSize: theme.fontSize.sm,
-                  color: theme.colors.error,
                 }}
               >
-                {leaderboardError}
+                {error}
               </p>
             )}
-            {leaderboardExpanded &&
-              !leaderboardLoading &&
-              leaderboardEntries != null && (
-                <div
-                  style={{
-                    width: "100%",
-                    maxWidth: 320,
-                    maxHeight: 240,
-                    overflow: "auto",
-                    fontSize: theme.fontSize.sm,
-                    backgroundColor: theme.colors.surface,
-                    border: `1px solid ${theme.colors.border}`,
-                    borderRadius: theme.borderRadius.md,
-                    padding: theme.spacing.sm,
-                  }}
-                >
-                  <table
-                    style={{ width: "100%", borderCollapse: "collapse" }}
-                    aria-label="Leaderboard"
-                  >
-                    <thead>
-                      <tr>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: theme.spacing.xs,
-                            color: theme.colors.textMuted,
-                          }}
-                        >
-                          Rank
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "left",
-                            padding: theme.spacing.xs,
-                            color: theme.colors.textMuted,
-                          }}
-                        >
-                          Name
-                        </th>
-                        <th
-                          style={{
-                            textAlign: "right",
-                            padding: theme.spacing.xs,
-                            color: theme.colors.textMuted,
-                          }}
-                        >
-                          Rating
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {leaderboardEntries.map((entry) => (
-                        <tr key={entry.playerId}>
-                          <td style={{ padding: theme.spacing.xs }}>
-                            {entry.rank}
-                          </td>
-                          <td style={{ padding: theme.spacing.xs }}>
-                            {entry.displayName || entry.playerId}
-                          </td>
-                          <td
-                            style={{
-                              padding: theme.spacing.xs,
-                              textAlign: "right",
-                            }}
-                          >
-                            {entry.rating}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-          </div>
-        )}
-        <Button
-          size="lg"
-          onClick={handleCreate}
-          disabled={loading !== null || searching}
-          style={touchTargetStyle}
-        >
-          {loading === "create" ? "Creating…" : "Create game"}
-        </Button>
-        <div style={rowStyle}>
-          <input
-            type="text"
-            aria-label="Room code"
-            placeholder="Room code"
-            value={joinRoomId}
-            onChange={(e) => setJoinRoomId(e.target.value)}
-            style={inputStyleResolved}
-            disabled={loading !== null}
-          />
-          <Button
-            size="lg"
-            onClick={handleJoin}
-            disabled={loading !== null}
-            style={touchTargetStyle}
-          >
-            {loading === "join" ? "Joining…" : "Join game"}
-          </Button>
+          </section>
         </div>
-        {roomInUrl && (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: theme.spacing.sm,
-              alignItems: "center",
-            }}
-          >
-            <Button
-              size="lg"
-              style={{
-                backgroundColor: theme.colors.accent,
-                ...touchTargetStyle,
-              }}
-              onClick={handleRejoin}
-              disabled={loading !== null}
-            >
-              {loading === "rejoin" ? "Rejoining…" : `Rejoin (${roomInUrl})`}
-            </Button>
-            {onRejoinAsHost && (
-              <Button
-                size="lg"
-                variant="secondary"
-                style={touchTargetStyle}
-                onClick={handleRejoinAsHost}
-                disabled={loading !== null}
-              >
-                {loading === "rejoinHost" ? "Recreating…" : "Rejoin as host"}
-              </Button>
-            )}
-          </div>
-        )}
-        {error && (
-          <p
-            role="alert"
-            style={{
-              color: theme.colors.error,
-              margin: 0,
-              fontSize: theme.fontSize.md,
-            }}
-          >
-            {error}
-          </p>
-        )}
-      </section>
+      </div>
     </main>
   );
 }
