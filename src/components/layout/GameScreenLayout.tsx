@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import type { CSSProperties } from "react";
 import { useBreakpoint } from "../../hooks/useBreakpoint";
-import { theme } from "../../theme";
 
 export interface GameScreenLayoutProps {
   header?: ReactNode;
@@ -11,66 +9,6 @@ export interface GameScreenLayoutProps {
   /** Optional overlay (e.g. game-end screen) rendered on top of main content. */
   overlay?: ReactNode;
 }
-
-const rootStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  width: "100vw",
-  height: "100vh",
-  overflow: "hidden",
-  backgroundColor: theme.colors.background,
-  position: "relative",
-};
-
-const headerStyle: CSSProperties = {
-  flexShrink: 0,
-  padding: theme.spacing.md,
-  borderBottom: `1px solid ${theme.colors.sidebarBorder}`,
-  backgroundColor: theme.colors.surface,
-  fontSize: theme.fontSize.lg,
-  fontWeight: 600,
-  color: theme.colors.text,
-};
-
-const mainRowStyle: CSSProperties = {
-  flex: 1,
-  display: "flex",
-  minHeight: 0,
-};
-
-const mainRowStyleNarrow: CSSProperties = {
-  ...mainRowStyle,
-  flexDirection: "column",
-};
-
-const boardSlotStyle: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  minHeight: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  position: "relative",
-};
-
-const overlaySlotStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  pointerEvents: "auto",
-  zIndex: 10,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const footerStyle: CSSProperties = {
-  flexShrink: 0,
-  padding: theme.spacing.xs,
-  borderTop: `1px solid ${theme.colors.sidebarBorder}`,
-  backgroundColor: theme.colors.surface,
-  fontSize: theme.fontSize.xs,
-  color: theme.colors.textMuted,
-};
 
 /**
  * Layout shell for the game screen: header, main row (board | sidebar), footer.
@@ -85,14 +23,30 @@ export function GameScreenLayout({
 }: GameScreenLayoutProps) {
   const { isNarrow } = useBreakpoint();
   return (
-    <div style={rootStyle}>
-      <header style={headerStyle}>{header ?? "Nardi"}</header>
-      <div style={isNarrow ? mainRowStyleNarrow : mainRowStyle}>
-        <div style={boardSlotStyle}>{board}</div>
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-background">
+      <header className="shrink-0 p-md border-b border-sidebar-border bg-surface text-lg font-semibold text-text">
+        {header ?? "Nardi"}
+      </header>
+      <div
+        className={
+          isNarrow ? "flex flex-1 min-h-0 flex-col" : "flex flex-1 min-h-0"
+        }
+      >
+        <div className="relative flex flex-1 min-h-0 min-w-0 items-center justify-center px-md py-md">
+          {board}
+        </div>
         {sidebar}
       </div>
-      {footer != null && <footer style={footerStyle}>{footer}</footer>}
-      {overlay != null && <div style={overlaySlotStyle}>{overlay}</div>}
+      {footer != null && (
+        <footer className="shrink-0 p-xs border-t border-sidebar-border bg-surface text-xs text-text-muted">
+          {footer}
+        </footer>
+      )}
+      {overlay != null && (
+        <div className="absolute inset-0 pointer-events-auto z-10 flex items-center justify-center">
+          {overlay}
+        </div>
+      )}
     </div>
   );
 }

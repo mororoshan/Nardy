@@ -1,7 +1,5 @@
-import type { CSSProperties } from "react";
 import type { Player } from "../../game/direction";
 import { useNardiGame } from "../../hooks/useNardiGame";
-import { theme } from "../../theme";
 import { Button } from "../ui";
 import {
   getLegalDestinationsFromPoint,
@@ -41,8 +39,8 @@ export function GameStatus({
   if (state.phase === "gameOver" && state.gameOverResult) {
     const { winner, oynOrMars } = state.gameOverResult;
     return (
-      <div style={styles.container}>
-        <p style={styles.result}>
+      <div className="p-sm flex flex-col items-center gap-sm">
+        <p className="m-0 text-warning text-lg font-bold">
           {winner === "white" ? "White" : "Black"} wins —{" "}
           {oynOrMars === "mars" ? "Mars (2)" : "Oyn (1)"}
         </p>
@@ -54,8 +52,8 @@ export function GameStatus({
   if (state.phase !== "playing") return null;
 
   return (
-    <div style={styles.container}>
-      <p style={styles.turn}>
+    <div className="p-sm flex flex-col items-center gap-sm">
+      <p className="m-0 text-text-muted text-md">
         {isMultiplayer && localPlayer !== null
           ? state.turn === localPlayer
             ? "Your turn"
@@ -70,7 +68,7 @@ export function GameStatus({
             Hint
           </Button>
         ) : (
-          <span style={styles.noMoves}>No moves</span>
+          <span className="text-sm text-text-muted">No moves</span>
         ))}
       {isMyTurn && selectedPoint !== null && canBearOff && (
         <Button
@@ -110,28 +108,3 @@ export function GameStatus({
     </div>
   );
 }
-
-const styles: Record<string, CSSProperties> = {
-  container: {
-    padding: theme.spacing.sm,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: theme.spacing.sm,
-  },
-  turn: {
-    margin: 0,
-    color: theme.colors.textMuted,
-    fontSize: theme.fontSize.md,
-  },
-  noMoves: {
-    fontSize: theme.fontSize.sm,
-    color: theme.colors.textMuted,
-  },
-  result: {
-    margin: 0,
-    color: theme.colors.warning,
-    fontSize: theme.fontSize.lg,
-    fontWeight: "bold",
-  },
-};

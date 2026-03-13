@@ -1,6 +1,4 @@
-import type { CSSProperties } from "react";
 import { useChatStore } from "../../stores/chatStore";
-import { theme } from "../../theme";
 import { Button } from "../ui";
 
 /** Preset quickchat messages. */
@@ -20,65 +18,6 @@ export interface QuickChatProps {
   enabled: boolean;
 }
 
-const containerStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: theme.spacing.md,
-};
-
-const logStyle: CSSProperties = {
-  flex: 1,
-  minHeight: 80,
-  maxHeight: 160,
-  overflowY: "auto",
-  padding: theme.spacing.sm,
-  backgroundColor: theme.colors.surface,
-  borderRadius: theme.borderRadius.sm,
-  fontSize: theme.fontSize.sm,
-};
-
-const messageRowStyle: CSSProperties = {
-  marginBottom: theme.spacing.xs,
-};
-
-const localLabelStyle: CSSProperties = {
-  color: theme.colors.accent,
-  fontWeight: 600,
-  marginRight: theme.spacing.sm,
-};
-
-const remoteLabelStyle: CSSProperties = {
-  color: theme.colors.textMuted,
-  fontWeight: 600,
-  marginRight: theme.spacing.sm,
-};
-
-const presetsStyle: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: theme.spacing.sm,
-};
-
-const emptyLogStyle: CSSProperties = {
-  color: theme.colors.textMuted,
-  fontStyle: "italic",
-};
-
-const disabledHintStyle: CSSProperties = {
-  color: theme.colors.textMuted,
-  fontSize: theme.fontSize.sm,
-  margin: 0,
-};
-
-const bannerStyle: CSSProperties = {
-  padding: theme.spacing.sm,
-  backgroundColor: theme.colors.surfaceElevated,
-  borderRadius: theme.borderRadius.sm,
-  fontSize: theme.fontSize.xs,
-  color: theme.colors.textMuted,
-  marginBottom: theme.spacing.sm,
-};
-
 export function QuickChat({ onSend, enabled }: QuickChatProps) {
   const messages = useChatStore((s) => s.messages);
   const addMessage = useChatStore((s) => s.addMessage);
@@ -93,8 +32,8 @@ export function QuickChat({ onSend, enabled }: QuickChatProps) {
 
   if (!showLog) {
     return (
-      <div style={containerStyle}>
-        <p style={disabledHintStyle}>
+      <div className="flex flex-col gap-md">
+        <p className="text-text-muted text-sm m-0">
           Chat is available in multiplayer games. Start or join a game to send
           quick messages.
         </p>
@@ -103,31 +42,33 @@ export function QuickChat({ onSend, enabled }: QuickChatProps) {
   }
 
   return (
-    <div style={containerStyle}>
+    <div className="flex flex-col gap-md">
       {!enabled && messages.length > 0 && (
-        <div style={bannerStyle}>
-          Chat unavailable. You can’t send messages until reconnected.
+        <div className="p-sm bg-surface-elevated rounded-sm text-xs text-text-muted mb-sm">
+          Chat unavailable. You can't send messages until reconnected.
         </div>
       )}
-      <div style={logStyle}>
+      <div className="flex-1 min-h-[80px] max-h-[160px] overflow-y-auto p-sm bg-surface rounded-sm text-sm">
         {messages.length === 0 ? (
-          <p style={emptyLogStyle}>No messages yet.</p>
+          <p className="text-text-muted italic m-0">No messages yet.</p>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} style={messageRowStyle}>
+            <div key={msg.id} className="mb-xs">
               <span
-                style={
-                  msg.from === "local" ? localLabelStyle : remoteLabelStyle
+                className={
+                  msg.from === "local"
+                    ? "text-accent font-semibold mr-sm"
+                    : "text-text-muted font-semibold mr-sm"
                 }
               >
                 {msg.from === "local" ? "You" : "Opponent"}:
               </span>
-              <span style={{ color: theme.colors.text }}>{msg.text}</span>
+              <span className="text-text">{msg.text}</span>
             </div>
           ))
         )}
       </div>
-      <div style={presetsStyle}>
+      <div className="flex flex-wrap gap-sm">
         {QUICKCHAT_PRESETS.map((text) => (
           <Button
             key={text}

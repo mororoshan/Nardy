@@ -1,12 +1,8 @@
-import type { CSSProperties } from "react";
 import { useState } from "react";
-import { theme } from "../theme";
 import { getRoomFromUrl } from "../sync/roomUrl";
 import type { LeaderboardEntry } from "../sync/signalingClient";
 import { Button } from "./ui";
 import type { QueueStatus } from "../hooks/useWebRtcSync";
-
-const MIN_TOUCH_HEIGHT = 44;
 
 export interface MainMenuProps {
   onCreateGame: () => Promise<void>;
@@ -36,92 +32,6 @@ export interface MainMenuProps {
   leaderboardLoading?: boolean;
 }
 
-const rootStyle: CSSProperties = {
-  minHeight: "100vh",
-  width: "100%",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: theme.spacing.lg,
-  color: theme.colors.text,
-};
-
-const cardStyle: CSSProperties = {
-  backgroundColor: theme.menu.backgroundOverlay,
-  borderRadius: 16,
-  border: `3px solid ${theme.menu.woodBorder}`,
-  outline: `1px solid ${theme.menu.gold}`,
-  outlineOffset: 2,
-  padding: theme.spacing.xl * 2,
-  maxWidth: 560,
-  width: "100%",
-  boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-};
-
-const titleStyle: CSSProperties = {
-  color: theme.menu.gold,
-  fontSize: 32,
-  fontWeight: 600,
-  fontFamily: "Georgia, serif",
-  margin: 0,
-  marginBottom: theme.spacing.xl,
-  textAlign: "center",
-};
-
-const columnsStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "row",
-  gap: theme.spacing.xl,
-  alignItems: "flex-start",
-};
-
-const columnsStyleNarrow: CSSProperties = {
-  flexDirection: "column",
-};
-
-const sectionBase: CSSProperties = {
-  flex: 1,
-  minWidth: 0,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: theme.spacing.lg,
-};
-
-const sectionHeadingStyle: CSSProperties = {
-  fontSize: theme.fontSize.sm,
-  fontWeight: 600,
-  color: theme.menu.gold,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-  margin: 0,
-  marginBottom: theme.spacing.xs,
-  paddingBottom: theme.spacing.xs,
-  borderBottom: `1px solid ${theme.menu.gold}`,
-  width: "100%",
-  textAlign: "center",
-};
-
-const menuButtonStyle: CSSProperties = {
-  backgroundColor: theme.menu.buttonBg,
-  color: theme.menu.goldMuted,
-  border: `1px solid ${theme.menu.gold}`,
-  borderRadius: theme.borderRadius.md,
-};
-
-const rejoinButtonStyle: CSSProperties = {
-  ...menuButtonStyle,
-  backgroundColor: theme.menu.rejoinHighlight,
-};
-
-const rowStyle: CSSProperties = {
-  display: "flex",
-  gap: theme.spacing.sm,
-  alignItems: "center",
-  flexWrap: "wrap",
-  justifyContent: "center",
-};
-
 export function MainMenu({
   onCreateGame,
   onJoinGame,
@@ -146,20 +56,13 @@ export function MainMenu({
   const searching = queueStatus === "searching";
   const isNarrow = touchFriendly;
 
-  const touchTargetStyle: CSSProperties | undefined = touchFriendly
-    ? { minHeight: MIN_TOUCH_HEIGHT }
-    : undefined;
-
-  const inputStyle: CSSProperties = {
-    padding: "10px 14px",
-    fontSize: theme.fontSize.lg,
-    backgroundColor: theme.menu.inputBg,
-    color: theme.colors.text,
-    border: `1px solid ${theme.menu.gold}`,
-    borderRadius: theme.borderRadius.md,
-    minWidth: 200,
-    ...(touchFriendly && { minHeight: MIN_TOUCH_HEIGHT }),
-  };
+  const touchClass = touchFriendly ? "min-h-[44px]" : "";
+  const inputClasses = [
+    "py-2.5 px-3.5 text-lg bg-menu-input-bg text-text border border-menu-gold rounded-md min-w-[200px]",
+    touchFriendly && "min-h-[44px]",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   const handleCreate = async () => {
     setError(null);
@@ -216,34 +119,46 @@ export function MainMenu({
     }
   };
 
+  const menuBtnClass = (extra = "") =>
+    [touchClass, extra].filter(Boolean).join(" ");
+
   return (
-    <main style={rootStyle}>
-      <div style={cardStyle}>
-        <h1 style={titleStyle}>Backgammon</h1>
+    <main className="min-h-screen w-full flex items-center justify-center p-lg text-text">
+      <div className="bg-menu-overlay rounded-[16px] border-[3px] border-menu-wood-border outline outline-1 outline-menu-gold outline-offset-2 p-[48px] max-w-[560px] w-full shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+        <h1 className="text-menu-gold text-[32px] font-semibold font-[Georgia,serif] m-0 mb-xl text-center">
+          Backgammon
+        </h1>
         <div
-          style={{
-            ...columnsStyle,
-            ...(isNarrow ? columnsStyleNarrow : {}),
-          }}
+          className={`flex flex-row gap-xl items-start ${
+            isNarrow ? "flex-col" : ""
+          }`}
         >
-          <section aria-labelledby="play-heading" style={sectionBase}>
-            <h2 id="play-heading" style={sectionHeadingStyle}>
+          <section
+            aria-labelledby="play-heading"
+            className="flex-1 min-w-0 flex flex-col items-center gap-lg"
+          >
+            <h2
+              id="play-heading"
+              className="text-sm font-semibold text-menu-gold uppercase tracking-wider m-0 mb-xs pb-xs border-b border-menu-gold w-full text-center"
+            >
               PLAY
             </h2>
             <Button
+              variant="menu"
               size="lg"
               onClick={onSinglePlayer}
               disabled={loading !== null}
-              style={{ ...menuButtonStyle, ...touchTargetStyle }}
+              className={menuBtnClass()}
               title="Play vs computer (you are White)"
             >
               Vs bot
             </Button>
             <Button
+              variant="menu"
               size="lg"
               onClick={onTwoPlayers}
               disabled={loading !== null}
-              style={{ ...menuButtonStyle, ...touchTargetStyle }}
+              className={menuBtnClass()}
               title="Two players on this device (pass and play)"
             >
               Two players
@@ -252,17 +167,20 @@ export function MainMenu({
 
           <section
             aria-labelledby="connect-heading"
-            style={{
-              ...sectionBase,
-              ...(isNarrow && { gap: theme.spacing.xl }),
-            }}
+            className={`flex-1 min-w-0 flex flex-col items-center gap-lg ${
+              isNarrow ? "!gap-xl" : ""
+            }`}
           >
-            <h2 id="connect-heading" style={sectionHeadingStyle}>
+            <h2
+              id="connect-heading"
+              className="text-sm font-semibold text-menu-gold uppercase tracking-wider m-0 mb-xs pb-xs border-b border-menu-gold w-full text-center"
+            >
               CONNECT
             </h2>
             {onPlayRanked && (
               <>
                 <Button
+                  variant="menu"
                   size="lg"
                   onClick={async () => {
                     setError(null);
@@ -278,13 +196,9 @@ export function MainMenu({
                     }
                   }}
                   disabled={loading !== null || searching}
-                  style={{
-                    ...menuButtonStyle,
-                    ...touchTargetStyle,
-                    ...(searching
-                      ? { backgroundColor: theme.colors.surfaceElevated }
-                      : {}),
-                  }}
+                  className={menuBtnClass(
+                    searching ? "!bg-surface-elevated" : "",
+                  )}
                 >
                   {searching
                     ? "Searching for match…"
@@ -293,21 +207,16 @@ export function MainMenu({
                       : "Play ranked"}
                 </Button>
                 {playerRating != null && (
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: theme.fontSize.sm,
-                      color: theme.menu.goldMuted,
-                    }}
-                  >
+                  <p className="m-0 text-sm text-menu-gold-muted">
                     Your rating: {playerRating}
                   </p>
                 )}
                 {searching && onCancelRanked && (
                   <Button
+                    variant="menu"
                     size="lg"
                     onClick={onCancelRanked}
-                    style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                    className={menuBtnClass()}
                   >
                     Cancel
                   </Button>
@@ -316,23 +225,19 @@ export function MainMenu({
             )}
             {onOpenLeaderboard && (
               <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: theme.spacing.sm,
-                  alignItems: "center",
-                }}
+                className="flex flex-col gap-sm items-center"
                 role="group"
                 aria-label="Leaderboard"
               >
                 <Button
+                  variant="menu"
                   size="lg"
                   onClick={() => {
                     setLeaderboardExpanded(true);
                     onOpenLeaderboard();
                   }}
                   disabled={leaderboardLoading || loading !== null}
-                  style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                  className={menuBtnClass()}
                   title={
                     leaderboardExpanded
                       ? "Leaderboard (shown)"
@@ -342,64 +247,27 @@ export function MainMenu({
                   {leaderboardLoading ? "Loading…" : "Leaderboard"}
                 </Button>
                 {leaderboardError && (
-                  <p
-                    role="alert"
-                    style={{
-                      margin: 0,
-                      fontSize: theme.fontSize.sm,
-                      color: theme.colors.error,
-                    }}
-                  >
+                  <p role="alert" className="m-0 text-sm text-error">
                     {leaderboardError}
                   </p>
                 )}
                 {leaderboardExpanded &&
                   !leaderboardLoading &&
                   leaderboardEntries != null && (
-                    <div
-                      style={{
-                        width: "100%",
-                        maxWidth: 320,
-                        maxHeight: 240,
-                        overflow: "auto",
-                        fontSize: theme.fontSize.sm,
-                        backgroundColor: theme.menu.inputBg,
-                        border: `1px solid ${theme.menu.gold}`,
-                        borderRadius: theme.borderRadius.md,
-                        padding: theme.spacing.sm,
-                      }}
-                    >
+                    <div className="w-full max-w-[320px] max-h-[240px] overflow-auto text-sm bg-menu-input-bg border border-menu-gold rounded-md p-sm">
                       <table
-                        style={{ width: "100%", borderCollapse: "collapse" }}
+                        className="w-full border-collapse"
                         aria-label="Leaderboard"
                       >
                         <thead>
                           <tr>
-                            <th
-                              style={{
-                                textAlign: "left",
-                                padding: theme.spacing.xs,
-                                color: theme.menu.goldMuted,
-                              }}
-                            >
+                            <th className="text-left p-xs text-menu-gold-muted">
                               Rank
                             </th>
-                            <th
-                              style={{
-                                textAlign: "left",
-                                padding: theme.spacing.xs,
-                                color: theme.menu.goldMuted,
-                              }}
-                            >
+                            <th className="text-left p-xs text-menu-gold-muted">
                               Name
                             </th>
-                            <th
-                              style={{
-                                textAlign: "right",
-                                padding: theme.spacing.xs,
-                                color: theme.menu.goldMuted,
-                              }}
-                            >
+                            <th className="text-right p-xs text-menu-gold-muted">
                               Rating
                             </th>
                           </tr>
@@ -407,18 +275,11 @@ export function MainMenu({
                         <tbody>
                           {leaderboardEntries.map((entry) => (
                             <tr key={entry.playerId}>
-                              <td style={{ padding: theme.spacing.xs }}>
-                                {entry.rank}
-                              </td>
-                              <td style={{ padding: theme.spacing.xs }}>
+                              <td className="p-xs">{entry.rank}</td>
+                              <td className="p-xs">
                                 {entry.displayName || entry.playerId}
                               </td>
-                              <td
-                                style={{
-                                  padding: theme.spacing.xs,
-                                  textAlign: "right",
-                                }}
-                              >
+                              <td className="p-xs text-right">
                                 {entry.rating}
                               </td>
                             </tr>
@@ -430,46 +291,42 @@ export function MainMenu({
               </div>
             )}
             <Button
+              variant="menu"
               size="lg"
               onClick={handleCreate}
               disabled={loading !== null || searching}
-              style={{ ...menuButtonStyle, ...touchTargetStyle }}
+              className={menuBtnClass()}
             >
               {loading === "create" ? "Creating…" : "Create game"}
             </Button>
-            <div style={rowStyle}>
+            <div className="flex gap-sm items-center flex-wrap justify-center">
               <input
                 type="text"
                 aria-label="Room code"
                 placeholder="Room code"
                 value={joinRoomId}
                 onChange={(e) => setJoinRoomId(e.target.value)}
-                style={inputStyle}
+                className={inputClasses}
                 disabled={loading !== null}
               />
               <Button
+                variant="menu"
                 size="lg"
                 onClick={handleJoin}
                 disabled={loading !== null}
-                style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                className={menuBtnClass()}
               >
                 {loading === "join" ? "Joining…" : "Join game"}
               </Button>
             </div>
             {roomInUrl && (
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: theme.spacing.sm,
-                  alignItems: "center",
-                }}
-              >
+              <div className="flex flex-col gap-sm items-center">
                 <Button
+                  variant="menuRejoin"
                   size="lg"
                   onClick={handleRejoin}
                   disabled={loading !== null}
-                  style={{ ...rejoinButtonStyle, ...touchTargetStyle }}
+                  className={menuBtnClass()}
                 >
                   {loading === "rejoin"
                     ? "Rejoining…"
@@ -477,10 +334,11 @@ export function MainMenu({
                 </Button>
                 {onRejoinAsHost && (
                   <Button
+                    variant="menu"
                     size="lg"
                     onClick={handleRejoinAsHost}
                     disabled={loading !== null}
-                    style={{ ...menuButtonStyle, ...touchTargetStyle }}
+                    className={menuBtnClass()}
                   >
                     {loading === "rejoinHost"
                       ? "Recreating…"
@@ -490,14 +348,7 @@ export function MainMenu({
               </div>
             )}
             {error && (
-              <p
-                role="alert"
-                style={{
-                  color: theme.colors.error,
-                  margin: 0,
-                  fontSize: theme.fontSize.sm,
-                }}
-              >
+              <p role="alert" className="text-error m-0 text-sm">
                 {error}
               </p>
             )}

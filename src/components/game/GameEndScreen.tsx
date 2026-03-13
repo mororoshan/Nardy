@@ -1,7 +1,5 @@
-import type { CSSProperties } from "react";
 import type { Player } from "../../game/direction";
 import type { MatchScore } from "../../contexts/nardiGameContextValue";
-import { theme } from "../../theme";
 import { Button } from "../ui";
 
 export interface GameEndScreenProps {
@@ -13,48 +11,6 @@ export interface GameEndScreenProps {
   onNewMatch: () => void;
   onBackToMenu: () => void;
 }
-
-const overlayStyle: CSSProperties = {
-  position: "absolute",
-  inset: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: "rgba(0, 0, 0, 0.75)",
-  zIndex: 10,
-};
-
-const cardStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: theme.spacing.lg,
-  padding: theme.spacing.xl,
-  backgroundColor: theme.colors.surface,
-  borderRadius: theme.borderRadius.md,
-  border: `1px solid ${theme.colors.sidebarBorder}`,
-  maxWidth: 320,
-};
-
-const titleStyle: CSSProperties = {
-  margin: 0,
-  fontSize: 20,
-  fontWeight: 600,
-  color: theme.colors.text,
-};
-
-const resultStyle: CSSProperties = {
-  margin: 0,
-  fontSize: theme.fontSize.lg,
-  color: theme.colors.warning,
-  fontWeight: 600,
-};
-
-const scoreStyle: CSSProperties = {
-  margin: 0,
-  fontSize: theme.fontSize.md,
-  color: theme.colors.textMuted,
-};
 
 /**
  * Full-screen overlay shown when the game ends. Shows winner, oyn/mars, match score,
@@ -81,22 +37,24 @@ export function GameEndScreen({
 
   return (
     <div
-      style={overlayStyle}
+      className="absolute inset-0 flex items-center justify-center bg-black/75 z-10"
       role="dialog"
       aria-modal="true"
       aria-label="Game over"
     >
-      <div style={cardStyle}>
-        <h2 style={titleStyle}>Game over</h2>
-        <p style={resultStyle}>
+      <div className="flex flex-col items-center gap-lg p-xl bg-surface rounded-md border border-sidebar-border max-w-[320px]">
+        <h2 className="m-0 text-[20px] font-semibold text-text">Game over</h2>
+        <p className="m-0 text-lg text-warning font-semibold">
           {winnerLabel} wins — {resultLabel}
         </p>
-        <p style={scoreStyle}>
+        <p className="m-0 text-md text-text-muted">
           Match: White {matchScore.white} – {matchScore.black} Black
         </p>
         {matchOver ? (
           <>
-            <p style={resultStyle}>Match over: {matchWinnerLabel} wins</p>
+            <p className="m-0 text-lg text-warning font-semibold">
+              Match over: {matchWinnerLabel} wins
+            </p>
             <Button onClick={onNewMatch}>New match</Button>
           </>
         ) : (

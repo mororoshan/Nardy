@@ -1,7 +1,11 @@
 import type { CSSProperties, ReactNode } from "react";
-import { theme } from "../../theme";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "menu"
+  | "menuRejoin";
 
 export interface ButtonProps {
   variant?: ButtonVariant;
@@ -12,44 +16,22 @@ export interface ButtonProps {
   type?: "button" | "submit";
   title?: string;
   style?: CSSProperties;
+  /** Optional Tailwind classes merged with variant/size (e.g. for menu overrides). */
+  className?: string;
 }
 
-const sizeStyles: Record<"sm" | "md" | "lg", CSSProperties> = {
-  sm: {
-    padding: "4px 8px",
-    fontSize: theme.fontSize.xs,
-  },
-  md: {
-    padding: "8px 16px",
-    fontSize: theme.fontSize.md,
-  },
-  lg: {
-    padding: "12px 24px",
-    fontSize: theme.fontSize.lg,
-  },
+const variantClasses: Record<ButtonVariant, string> = {
+  primary: "bg-surface-elevated text-text",
+  secondary: "bg-surface text-text border border-border",
+  ghost: "bg-transparent text-text",
+  menu: "bg-menu-button-bg text-menu-gold-muted border border-menu-gold",
+  menuRejoin: "bg-menu-rejoin text-menu-gold-muted border border-menu-gold",
 };
 
-const variantStyles: Record<ButtonVariant, CSSProperties> = {
-  primary: {
-    backgroundColor: theme.colors.surfaceElevated,
-    color: theme.colors.text,
-  },
-  secondary: {
-    backgroundColor: theme.colors.surface,
-    color: theme.colors.text,
-    border: `1px solid ${theme.colors.border}`,
-  },
-  ghost: {
-    backgroundColor: "transparent",
-    color: theme.colors.text,
-  },
-};
-
-const baseStyle: CSSProperties = {
-  border: "none",
-  borderRadius: theme.borderRadius.md,
-  cursor: "pointer",
-  fontWeight: 500,
+const sizeClasses: Record<"sm" | "md" | "lg", string> = {
+  sm: "px-2 py-1 text-xs",
+  md: "px-4 py-2 text-md",
+  lg: "px-6 py-3 text-lg",
 };
 
 export function Button({
@@ -61,20 +43,25 @@ export function Button({
   type = "button",
   title,
   style,
+  className: classNameProp,
 }: ButtonProps) {
+  const className = [
+    "border-0 rounded-md cursor-pointer font-medium",
+    variantClasses[variant],
+    sizeClasses[size],
+    disabled && "opacity-60 cursor-not-allowed",
+    classNameProp,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <button
       type={type}
       title={title}
       disabled={disabled}
       onClick={onClick}
-      style={{
-        ...baseStyle,
-        ...sizeStyles[size],
-        ...variantStyles[variant],
-        ...(disabled && { opacity: 0.6, cursor: "not-allowed" }),
-        ...style,
-      }}
+      className={className}
+      style={style}
     >
       {children}
     </button>

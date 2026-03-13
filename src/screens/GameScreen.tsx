@@ -1,10 +1,8 @@
-import type { CSSProperties } from "react";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation, type NavigateFunction } from "react-router-dom";
 import { Application } from "@pixi/react";
 import { GameLayout } from "../components/layout/GameLayout";
 import { GameScreenLayout } from "../components/layout/GameScreenLayout";
-import { BOARD_ASPECT_RATIO } from "../game/boardGeometry";
 import { useBreakpoint } from "../hooks/useBreakpoint";
 import { useOpponentAi } from "../hooks/useOpponentAi";
 import type { UseWebRtcSyncResult } from "../hooks/useWebRtcSync";
@@ -27,18 +25,6 @@ export interface GameScreenProps {
 interface GameLocationState {
   localPlayMode?: unknown;
 }
-
-const boardWrapperStyle: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  aspectRatio: BOARD_ASPECT_RATIO,
-  position: "relative",
-  backgroundColor: theme.colors.background,
-  overflow: "hidden",
-  maxWidth: "100%",
-  maxHeight: "100%",
-  margin: "auto",
-};
 
 export function GameScreen({ sync, navigate }: GameScreenProps) {
   const location = useLocation();
@@ -107,7 +93,10 @@ export function GameScreen({ sync, navigate }: GameScreenProps) {
   const resizeTarget = boardContainer ?? undefined;
   const hasSize = boardSize.width > 0 && boardSize.height > 0;
   const boardNode = (
-    <div ref={setBoardAreaRef} style={boardWrapperStyle}>
+    <div
+      ref={setBoardAreaRef}
+      className="relative m-auto h-full w-full max-h-full max-w-[min(100%,1200px)] overflow-hidden rounded-lg bg-background/80 aspect-7/5"
+    >
       {resizeTarget && hasSize && (
         <Application
           background={theme.colors.background}

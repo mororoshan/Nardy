@@ -1,113 +1,19 @@
-import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import type { NardiGameSession } from "../../session/gameSessionTypes";
 import { getJoinUrl } from "../../sync/roomUrl";
 import { useNardiGameStore } from "../../stores/nardiGameStore";
-import { theme } from "../../theme";
 import { Button, TabBar } from "../ui";
 import { MoveHistoryList } from "./MoveHistoryList";
 import { DiceDisplay } from "./DiceDisplay";
 import { GameStatus } from "./GameStatus";
 import { QuickChat } from "./QuickChat";
 
-const SIDEBAR_WIDTH = 300;
-
 export interface GameSidebarProps {
   session: NardiGameSession;
   onBackToMenu: () => void;
   isNarrow?: boolean;
 }
-
-const sidebarStyle: CSSProperties = {
-  width: SIDEBAR_WIDTH,
-  minWidth: SIDEBAR_WIDTH,
-  position: "relative",
-  zIndex: 1,
-  backgroundColor: theme.colors.sidebarBg,
-  borderLeft: `1px solid ${theme.colors.sidebarBorder}`,
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "center",
-  overflow: "hidden",
-};
-
-const sidebarStyleNarrow: CSSProperties = {
-  width: "100%",
-  minWidth: 0,
-  flexShrink: 0,
-  position: "relative",
-  zIndex: 1,
-  backgroundColor: theme.colors.sidebarBg,
-  borderTop: `1px solid ${theme.colors.sidebarBorder}`,
-  borderLeft: "none",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  overflow: "auto",
-};
-
-const headerStyle: CSSProperties = {
-  padding: theme.spacing.md,
-  borderBottom: `1px solid ${theme.colors.sidebarBorder}`,
-  display: "flex",
-  flexDirection: "column",
-  gap: theme.spacing.sm,
-};
-
-const connectionStyle: CSSProperties = {
-  fontSize: theme.fontSize.xs,
-  color: theme.colors.textMuted,
-};
-
-const roomRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: theme.spacing.sm,
-  flexWrap: "wrap",
-};
-
-const roomLabelStyle: CSSProperties = {
-  fontSize: theme.fontSize.xs,
-  color: theme.colors.textMuted,
-};
-
-const disconnectedRowStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: theme.spacing.xs,
-  alignItems: "flex-start",
-};
-
-const shareRowStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: theme.spacing.sm,
-  flexWrap: "wrap",
-};
-
-const qrOverlayStyle: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  backgroundColor: "rgba(0, 0, 0, 0.6)",
-  zIndex: 100,
-};
-
-const qrCardStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "center",
-  gap: theme.spacing.md,
-  padding: theme.spacing.lg,
-  backgroundColor: theme.colors.surface,
-  borderRadius: theme.borderRadius.md,
-  border: `1px solid ${theme.colors.sidebarBorder}`,
-};
 
 export function GameSidebar({
   session,
@@ -222,10 +128,14 @@ export function GameSidebar({
   const matchScore = useNardiGameStore((s) => s.matchScore);
   const matchTarget = useNardiGameStore((s) => s.matchTarget);
 
+  const sidebarClasses = isNarrow
+    ? "w-full min-w-0 flex-shrink-0 relative z-[1] bg-sidebar-bg border-t border-sidebar-border border-l-0 flex flex-col items-stretch justify-start overflow-auto"
+    : "relative z-[1] flex h-full w-[260px] min-w-[260px] flex-col items-stretch justify-center overflow-hidden bg-sidebar-bg border-l border-sidebar-border";
+
   return (
-    <aside style={isNarrow ? sidebarStyleNarrow : sidebarStyle}>
-      <div style={headerStyle}>
-        <p style={roomLabelStyle}>
+    <aside className={sidebarClasses}>
+      <div className="flex flex-col gap-md border-b border-sidebar-border p-md">
+        <p className="text-xs text-text-muted m-0">
           Match: White {matchScore.white} – {matchScore.black} Black
           {matchTarget > 0 ? ` (first to ${matchTarget})` : ""}
         </p>
@@ -239,22 +149,18 @@ export function GameSidebar({
         </Button>
         {session.connectionStatus !== "disconnected" &&
           session.connectionStatus !== "reconnecting" && (
-            <span style={connectionStyle}>
+            <span className="text-xs text-text-muted">
               {session.connectionStatus === "connecting"
                 ? "Connecting…"
                 : `Connected · ${session.connectionQuality.charAt(0).toUpperCase()}${session.connectionQuality.slice(1)}`}
             </span>
           )}
         {session.connectionStatus === "reconnecting" && (
-          <span style={{ ...connectionStyle, color: theme.colors.warning }}>
-            Reconnecting…
-          </span>
+          <span className="text-xs text-warning">Reconnecting…</span>
         )}
         {isDisconnected && (
-          <div style={disconnectedRowStyle}>
-            <span style={{ ...connectionStyle, color: theme.colors.error }}>
-              Disconnected
-            </span>
+          <div className="flex flex-col gap-xs items-start">
+            <span className="text-xs text-error">Disconnected</span>
             {showRejoin && (
               <>
                 <Button
@@ -266,13 +172,7 @@ export function GameSidebar({
                   {rejoinLoading ? "Rejoining…" : "Rejoin"}
                 </Button>
                 {rejoinError && (
-                  <span
-                    role="alert"
-                    style={{
-                      fontSize: theme.fontSize.xs,
-                      color: theme.colors.error,
-                    }}
-                  >
+                  <span role="alert" className="text-xs text-error">
                     {rejoinError}
                   </span>
                 )}
@@ -281,12 +181,9 @@ export function GameSidebar({
           </div>
         )}
         {session.roomId && (
-          <div style={roomRowStyle}>
-            <span style={roomLabelStyle}>
-              Room:{" "}
-              <strong style={{ color: theme.colors.text }}>
-                {session.roomId}
-              </strong>
+          <div className="flex items-center gap-sm flex-wrap">
+            <span className="text-xs text-text-muted">
+              Room: <strong className="text-text">{session.roomId}</strong>
             </span>
             <Button size="sm" onClick={session.copyRoomCode}>
               Copy code
@@ -294,18 +191,12 @@ export function GameSidebar({
           </div>
         )}
         {session.isRankedGame && session.playerRating != null && (
-          <p
-            style={{
-              margin: 0,
-              fontSize: theme.fontSize.xs,
-              color: theme.colors.textMuted,
-            }}
-          >
+          <p className="m-0 text-xs text-text-muted">
             Rating: {session.playerRating}
           </p>
         )}
         {canShare && (
-          <div style={shareRowStyle}>
+          <div className="flex items-center gap-sm flex-wrap">
             <Button
               size="sm"
               onClick={handleShareGame}
@@ -329,14 +220,17 @@ export function GameSidebar({
       </div>
       {showQr && (
         <div
-          style={qrOverlayStyle}
+          className="fixed inset-0 z-100 flex items-center justify-center bg-black/60"
           role="dialog"
           aria-modal="true"
           aria-label="QR code to join game"
           onClick={() => setShowQr(false)}
         >
-          <div style={qrCardStyle} onClick={(e) => e.stopPropagation()}>
-            <span style={{ ...roomLabelStyle, margin: 0 }}>Scan to join</span>
+          <div
+            className="flex flex-col items-center gap-md p-lg bg-surface rounded-md border border-sidebar-border"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs text-text-muted m-0">Scan to join</span>
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
@@ -345,7 +239,7 @@ export function GameSidebar({
                 height={200}
               />
             ) : (
-              <span style={connectionStyle}>Generating…</span>
+              <span className="text-xs text-text-muted">Generating…</span>
             )}
             <Button size="sm" onClick={() => setShowQr(false)}>
               Close
@@ -353,42 +247,38 @@ export function GameSidebar({
           </div>
         </div>
       )}
-      <TabBar
-        tabs={[
-          { id: "moves", label: "Moves" },
-          { id: "controls", label: "Controls" },
-          { id: "chat", label: "Chat" },
-        ]}
-        activeId={activeTab}
-        onSelect={(id) => setActiveTab(id as "moves" | "controls" | "chat")}
-      >
-        {activeTab === "moves" ? (
-          <MoveHistoryList />
-        ) : activeTab === "chat" ? (
-          <QuickChat onSend={session.sendChat} enabled={chatEnabled} />
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: theme.spacing.lg,
-            }}
-          >
-            <DiceDisplay
-              localPlayer={session.localPlayer}
-              isMultiplayer={session.mode === "multiplayer"}
-              onAfterRoll={session.onAfterRoll}
-              onAfterFirstRoll={session.onAfterFirstRoll}
-            />
-            <GameStatus
-              localPlayer={session.localPlayer}
-              isMultiplayer={session.mode === "multiplayer"}
-              onAfterMove={session.onAfterMove}
-              onAfterPass={session.onAfterPass}
-            />
-          </div>
-        )}
-      </TabBar>
+      <div className="flex w-full flex-1 overflow-auto px-md py-md">
+        <TabBar
+          tabs={[
+            { id: "moves", label: "Moves" },
+            { id: "controls", label: "Controls" },
+            { id: "chat", label: "Chat" },
+          ]}
+          activeId={activeTab}
+          onSelect={(id) => setActiveTab(id as "moves" | "controls" | "chat")}
+        >
+          {activeTab === "moves" ? (
+            <MoveHistoryList />
+          ) : activeTab === "chat" ? (
+            <QuickChat onSend={session.sendChat} enabled={chatEnabled} />
+          ) : (
+            <div className="flex flex-col gap-lg">
+              <DiceDisplay
+                localPlayer={session.localPlayer}
+                isMultiplayer={session.mode === "multiplayer"}
+                onAfterRoll={session.onAfterRoll}
+                onAfterFirstRoll={session.onAfterFirstRoll}
+              />
+              <GameStatus
+                localPlayer={session.localPlayer}
+                isMultiplayer={session.mode === "multiplayer"}
+                onAfterMove={session.onAfterMove}
+                onAfterPass={session.onAfterPass}
+              />
+            </div>
+          )}
+        </TabBar>
+      </div>
     </aside>
   );
 }

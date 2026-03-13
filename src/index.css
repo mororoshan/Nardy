@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+  /* Colors - map theme.colors and theme.menu */
+  --color-background: #020617;
+  --color-surface: #111827;
+  --color-surface-elevated: #1f2937;
+  --color-sidebar-bg: #0b1220;
+  --color-sidebar-border: #1f2937;
+  --color-tab-active: rgba(63, 63, 70, 0.5);
+  --color-border: #52525b;
+  --color-text: #e4e4e7;
+  --color-text-muted: #a1a1aa;
+  --color-accent: #4f46e5;
+  --color-success: #22c55e;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  /* Menu (backgammon-style) */
+  --color-menu-overlay: rgba(30, 42, 58, 0.95);
+  --color-menu-gold: #c9a227;
+  --color-menu-gold-muted: #e8d5a3;
+  --color-menu-button-bg: #1e2a3a;
+  --color-menu-rejoin: #6b4bb3;
+  --color-menu-input-bg: #0f1419;
+  --color-menu-wood-border: #4a3728;
+  /* Spacing - map theme.spacing (px) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  /* Font size (Tailwind --text-* namespace) */
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    padding: 0;
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #020617;
+    background-image: url("/assets/menu-bg.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  #app {
+    width: 100%;
+    min-height: 100vh;
+    overflow: auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+}

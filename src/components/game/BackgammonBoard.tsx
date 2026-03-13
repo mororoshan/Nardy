@@ -22,9 +22,43 @@ import { buildMovePayload } from "../../sync/webrtcSyncTypes";
 import type { NardiGameSession } from "../../session/gameSessionTypes";
 import { useNardiGameStore, type LastMove } from "../../stores/nardiGameStore";
 import { theme } from "../../theme";
+import { modernClassicBoardSkin } from "../../game/boardSkin";
 
 const PIECE_RADIUS = Math.min(pointW, pointH) * 0.35;
 const HIGHLIGHT_RADIUS = Math.min(pointW, pointH) * 0.42;
+
+const HIGHLIGHT_STYLES = {
+  hint: {
+    fill: modernClassicBoardSkin.highlights.hint.fill,
+    fillAlpha: 0.4,
+    stroke: modernClassicBoardSkin.highlights.hint.stroke,
+    strokeWidth: 2,
+  },
+  lastMove: {
+    fill: modernClassicBoardSkin.highlights.lastMove.fill,
+    fillAlpha: 0.35,
+    stroke: modernClassicBoardSkin.highlights.lastMove.stroke,
+    strokeWidth: 2,
+  },
+  movable: {
+    fill: modernClassicBoardSkin.highlights.movable.fill,
+    fillAlpha: 0.25,
+    stroke: modernClassicBoardSkin.highlights.movable.stroke,
+    strokeWidth: 2,
+  },
+  selected: {
+    fill: modernClassicBoardSkin.highlights.selected.fill,
+    fillAlpha: 0.5,
+    stroke: modernClassicBoardSkin.highlights.selected.stroke,
+    strokeWidth: 2,
+  },
+  legalDestination: {
+    fill: modernClassicBoardSkin.highlights.legalDestination.fill,
+    fillAlpha: 0.35,
+    stroke: modernClassicBoardSkin.highlights.legalDestination.stroke,
+    strokeWidth: 1,
+  },
+} as const;
 
 /** Interactive board area: hit testing and pointer events. */
 function BoardHitArea({
@@ -52,26 +86,105 @@ function BoardHitArea({
   );
 }
 
-/** Board background, bar, and point circles (no pieces). */
+/** Board background, bar, and point markers (no pieces). */
 function BoardSurface() {
   return (
     <pixiGraphics
       draw={(g: Graphics) => {
+        const skin = modernClassicBoardSkin;
+        const frameThickness = Math.min(pointW, pointH) * 0.6;
+        const innerX = frameThickness;
+        const innerY = frameThickness;
+        const innerWidth = BOARD_WIDTH - frameThickness * 2;
+        const innerHeight = BOARD_HEIGHT - frameThickness * 2;
+
+        const drawMidBarOrnament = (opts: {
+          barX: number;
+          barY: number;
+          barWidth: number;
+          barHeight: number;
+          skin: typeof modernClassicBoardSkin;
+        }) => {
+          const { barX, barY, barWidth, barHeight, skin } = opts;
+          const centerX = barX + barWidth / 2;
+          const ornamentRadius = Math.min(barWidth, barHeight) * 0.08;
+          const count = 5;
+
+          for (let i = 0; i < count; i++) {
+            const t = (i + 0.5) / count;
+            const cy = barY + barHeight * t;
+            g.circle(centerX, cy, ornamentRadius).fill({
+              color: skin.ornament.color,
+              alpha: skin.ornament.opacity,
+            });
+          }
+        };
+
         g.clear();
+        // Outer wood frame
         g.rect(0, 0, BOARD_WIDTH, BOARD_HEIGHT).fill({
-          color: 0xc4a35a,
+          color: skin.frameWood.base,
           alpha: 1,
         });
+        // Inner felt playing area
+        g.rect(innerX, innerY, innerWidth, innerHeight).fill({
+          color: skin.felt.base,
+          alpha: 1,
+        });
+
+        // Simple beveled edge around felt (highlight on top/left, shadow on bottom/right)
+        const bevelSize = Math.min(pointW, pointH) * 0.12;
+        g.rect(innerX, innerY, innerWidth, bevelSize).fill({
+          color: skin.frameWood.highlight,
+          alpha: 0.5,
+        });
+        g.rect(innerX, innerY, bevelSize, innerHeight).fill({
+          color: skin.frameWood.highlight,
+          alpha: 0.5,
+        });
+        g.rect(innerX, innerY + innerHeight - bevelSize, innerWidth, bevelSize).fill({
+          color: skin.frameWood.shadow,
+          alpha: 0.6,
+        });
+        g.rect(innerX + innerWidth - bevelSize, innerY, bevelSize, innerHeight).fill({
+          color: skin.frameWood.shadow,
+          alpha: 0.6,
+        });
+
         const halfW = (BOARD_WIDTH - BAR_WIDTH) / 2;
-        g.rect(halfW, 0, BAR_WIDTH, BOARD_HEIGHT).fill({
-          color: 0x5c4033,
+        const barX = halfW;
+        const barY = innerY;
+        const barHeight = innerHeight;
+
+        // Central bar in a slightly darker wood tone
+        g.rect(barX, barY, BAR_WIDTH, barHeight).fill({
+          color: skin.frameWood.shadow,
           alpha: 1,
         });
+
+        // Subtle vertical ornament stripe
+        const ornamentWidth = BAR_WIDTH * 0.35;
+        const ornamentX = barX + (BAR_WIDTH - ornamentWidth) / 2;
+        g.rect(ornamentX, barY, ornamentWidth, barHeight).fill({
+          color: skin.ornament.color,
+          alpha: skin.ornament.opacity * 0.5,
+        });
+        // Engraving-style repeated shapes along the mid-bar
+        drawMidBarOrnament({
+          barX,
+          barY,
+          barWidth: BAR_WIDTH,
+          barHeight,
+          skin,
+        });
+
+        // Subtle felt-friendly point hints
+        const markerRadius = PIECE_RADIUS * 0.3;
         for (let i = 1; i <= 24; i++) {
           const { x, y } = pointIndexToPixelCenter(i);
-          g.circle(x, y, HIGHLIGHT_RADIUS).fill({
-            color: 0x8b7355,
-            alpha: 0.4,
+          g.circle(x, y, markerRadius).fill({
+            color: skin.felt.base,
+            alpha: 0.22,
           });
         }
       }}
@@ -112,6 +225,9 @@ function BoardPieces({
   moveProgress: number;
 }) {
   const animating = lastMove && lastMove.to !== 0 && moveProgress < 1;
+  const skin = modernClassicBoardSkin;
+  const lightChecker = skin.checker.light;
+  const darkChecker = skin.checker.dark;
 
   return (
     <pixiGraphics
@@ -132,15 +248,15 @@ function BoardPieces({
           for (let w = 0; w < whiteCount; w++) {
             const oy = y + (idx - (stack - 1) / 2) * stepY;
             g.circle(x, oy, PIECE_RADIUS)
-              .fill({ color: 0xf5f5dc })
-              .stroke({ width: 1, color: 0x8b7355 });
+              .fill({ color: lightChecker.base })
+              .stroke({ width: 1, color: lightChecker.highlight });
             idx++;
           }
           for (let b = 0; b < blackCount; b++) {
             const oy = y + (idx - (stack - 1) / 2) * stepY;
             g.circle(x, oy, PIECE_RADIUS)
-              .fill({ color: 0x2d2d2d })
-              .stroke({ width: 1, color: 0x1a1a1a });
+              .fill({ color: darkChecker.base })
+              .stroke({ width: 1, color: darkChecker.highlight });
             idx++;
           }
         }
@@ -151,10 +267,10 @@ function BoardPieces({
           const y = start.y + (end.y - start.y) * moveProgress;
           const isWhite = lastMove.player === "white";
           g.circle(x, y, PIECE_RADIUS)
-            .fill({ color: isWhite ? 0xf5f5dc : 0x2d2d2d })
+            .fill({ color: isWhite ? lightChecker.base : darkChecker.base })
             .stroke({
               width: 1,
-              color: isWhite ? 0x8b7355 : 0x1a1a1a,
+              color: isWhite ? lightChecker.highlight : darkChecker.highlight,
             });
         }
       }}
@@ -183,49 +299,54 @@ function BoardHighlights({
       draw={(g: Graphics) => {
         g.clear();
         if (hintMove) {
+          const style = HIGHLIGHT_STYLES.hint;
           const fromPos = pointIndexToPixelCenter(hintMove.from);
           g.circle(fromPos.x, fromPos.y, HIGHLIGHT_RADIUS)
-            .fill({ color: 0x22d3ee, alpha: 0.4 })
-            .stroke({ width: 2, color: 0x06b6d4 });
+            .fill({ color: style.fill, alpha: style.fillAlpha })
+            .stroke({ width: style.strokeWidth, color: style.stroke });
           if (hintMove.to !== 0) {
             const toPos = pointIndexToPixelCenter(hintMove.to);
             g.circle(toPos.x, toPos.y, HIGHLIGHT_RADIUS)
-              .fill({ color: 0x22d3ee, alpha: 0.4 })
-              .stroke({ width: 2, color: 0x06b6d4 });
+              .fill({ color: style.fill, alpha: style.fillAlpha })
+              .stroke({ width: style.strokeWidth, color: style.stroke });
           }
         }
         if (lastMove) {
+          const style = HIGHLIGHT_STYLES.lastMove;
           const fromPos = pointIndexToPixelCenter(lastMove.from);
           g.circle(fromPos.x, fromPos.y, HIGHLIGHT_RADIUS)
-            .fill({ color: 0x818cf8, alpha: 0.35 })
-            .stroke({ width: 2, color: 0x6366f1 });
+            .fill({ color: style.fill, alpha: style.fillAlpha })
+            .stroke({ width: style.strokeWidth, color: style.stroke });
           if (lastMove.to !== 0) {
             const toPos = pointIndexToPixelCenter(lastMove.to);
             g.circle(toPos.x, toPos.y, HIGHLIGHT_RADIUS)
-              .fill({ color: 0x818cf8, alpha: 0.35 })
-              .stroke({ width: 2, color: 0x6366f1 });
+              .fill({ color: style.fill, alpha: style.fillAlpha })
+              .stroke({ width: style.strokeWidth, color: style.stroke });
           }
         }
         if (canSelectOrMove) {
+          const style = HIGHLIGHT_STYLES.movable;
           for (const p of movablePoints) {
             const { x, y } = pointIndexToPixelCenter(p);
             g.circle(x, y, HIGHLIGHT_RADIUS)
-              .fill({ color: 0xeab308, alpha: 0.25 })
-              .stroke({ width: 2, color: 0xca8a04 });
+              .fill({ color: style.fill, alpha: style.fillAlpha })
+              .stroke({ width: style.strokeWidth, color: style.stroke });
           }
         }
         if (selectedPoint !== null) {
+          const style = HIGHLIGHT_STYLES.selected;
           const { x, y } = pointIndexToPixelCenter(selectedPoint);
           g.circle(x, y, HIGHLIGHT_RADIUS)
-            .fill({ color: 0x4ade80, alpha: 0.5 })
-            .stroke({ width: 2, color: 0x22c55e });
+            .fill({ color: style.fill, alpha: style.fillAlpha })
+            .stroke({ width: style.strokeWidth, color: style.stroke });
         }
         for (const p of legalDests) {
           if (p <= 0) continue;
+          const style = HIGHLIGHT_STYLES.legalDestination;
           const { x, y } = pointIndexToPixelCenter(p);
           g.circle(x, y, HIGHLIGHT_RADIUS)
-            .fill({ color: 0x22c55e, alpha: 0.35 })
-            .stroke({ width: 1, color: 0x16a34a });
+            .fill({ color: style.fill, alpha: style.fillAlpha })
+            .stroke({ width: style.strokeWidth, color: style.stroke });
         }
       }}
     />
@@ -335,7 +456,7 @@ export function BackgammonBoard({ session }: BackgammonBoardProps) {
       onPointerDown={handlePointerDown}
     >
       <BoardSurface />
-      <PointLabels />
+      {/* <PointLabels /> */}
       <BoardPieces
         state={state}
         lastMove={lastMove}

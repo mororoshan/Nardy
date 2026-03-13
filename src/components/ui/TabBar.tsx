@@ -1,5 +1,4 @@
-import type { CSSProperties, ReactNode } from "react";
-import { theme } from "../../theme";
+import type { ReactNode } from "react";
 
 export interface TabBarTab {
   id: string;
@@ -13,55 +12,31 @@ export interface TabBarProps {
   children: ReactNode;
 }
 
-const tabBarStyle: CSSProperties = {
-  display: "flex",
-  borderBottom: `1px solid ${theme.colors.sidebarBorder}`,
-};
-
-function tabStyle(active: boolean): CSSProperties {
-  return {
-    flex: 1,
-    padding: "10px 12px",
-    fontSize: theme.fontSize.sm,
-    fontWeight: active ? 600 : 400,
-    color: active ? theme.colors.text : theme.colors.textMuted,
-    backgroundColor: active ? theme.colors.tabActiveBg : "transparent",
-    border: "none",
-    cursor: "pointer",
-  };
-}
-
-const wrapperStyle: CSSProperties = {
-  flex: 1,
-  display: "flex",
-  flexDirection: "column",
-  minHeight: 0,
-};
-
-const tabContentStyle: CSSProperties = {
-  flex: 1,
-  overflow: "auto",
-  padding: theme.spacing.md,
-};
-
 export function TabBar({ tabs, activeId, onSelect, children }: TabBarProps) {
   return (
-    <div style={wrapperStyle}>
-      <div style={tabBarStyle} role="tablist">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            role="tab"
-            aria-selected={activeId === tab.id}
-            style={tabStyle(activeId === tab.id)}
-            onClick={() => onSelect(tab.id)}
-          >
-            {tab.label}
-          </button>
-        ))}
+    <div className="flex flex-1 flex-col min-h-0">
+      <div className="flex border-b border-sidebar-border" role="tablist">
+        {tabs.map((tab) => {
+          const active = activeId === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              className={`flex-1 py-2.5 px-3 text-sm border-0 cursor-pointer ${
+                active
+                  ? "font-semibold text-text bg-tab-active"
+                  : "font-normal text-text-muted bg-transparent"
+              }`}
+              onClick={() => onSelect(tab.id)}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
-      <div style={tabContentStyle} role="tabpanel">
+      <div className="flex-1 overflow-auto p-md" role="tabpanel">
         {children}
       </div>
     </div>
