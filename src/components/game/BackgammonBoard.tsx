@@ -26,6 +26,14 @@ import { modernClassicBoardSkin } from "../../game/boardSkin";
 
 const PIECE_RADIUS = Math.min(pointW, pointH) * 0.35;
 const HIGHLIGHT_RADIUS = Math.min(pointW, pointH) * 0.42;
+const PIECE_EDGE_INSET = Math.min(pointW, pointH) - 100;
+
+function getPieceBasePosition(pointIndex: number) {
+  const center = pointIndexToPixelCenter(pointIndex);
+  const isTopHalf = center.y < BOARD_HEIGHT / 2;
+  const yBase = center.y + (isTopHalf ? PIECE_EDGE_INSET : -PIECE_EDGE_INSET);
+  return { x: center.x, y: yBase };
+}
 
 const HIGHLIGHT_STYLES = {
   hint: {
@@ -192,28 +200,6 @@ function BoardSurface() {
   );
 }
 
-/** Point number labels 1–24. */
-function PointLabels() {
-  return (
-    <>
-      {Array.from({ length: 24 }, (_, i) => {
-        const pointIndex = i + 1;
-        const { x, y } = pointIndexToPixelCenter(pointIndex);
-        return (
-          <pixiText
-            key={pointIndex}
-            x={x}
-            y={y}
-            text={String(pointIndex)}
-            anchor={0.5}
-            style={{ fontSize: 14, fill: 0x2d2d2d, fontWeight: "bold" }}
-          />
-        );
-      })}
-    </>
-  );
-}
-
 /** White and black pieces from game state. Optional lastMove + progress for animating one piece. */
 function BoardPieces({
   state,
@@ -240,7 +226,7 @@ function BoardPieces({
             if (lastMove.player === "white") whiteCount--;
             else blackCount--;
           }
-          const { x, y } = pointIndexToPixelCenter(i);
+          const { x, y } = getPieceBasePosition(i);
           const stack = whiteCount + blackCount;
           const maxStack = Math.max(stack, 1);
           const stepY = (PIECE_RADIUS * 2 * 0.7) / maxStack;
@@ -261,8 +247,8 @@ function BoardPieces({
           }
         }
         if (animating && lastMove) {
-          const start = pointIndexToPixelCenter(lastMove.from);
-          const end = pointIndexToPixelCenter(lastMove.to);
+          const start = getPieceBasePosition(lastMove.from);
+          const end = getPieceBasePosition(lastMove.to);
           const x = start.x + (end.x - start.x) * moveProgress;
           const y = start.y + (end.y - start.y) * moveProgress;
           const isWhite = lastMove.player === "white";
@@ -450,13 +436,89 @@ export function BackgammonBoard({ session }: BackgammonBoardProps) {
     }
   };
 
+  const BoardStripes = () => {
+    return (
+      <pixiGraphics
+        draw={(g: Graphics) => {
+          const skin = modernClassicBoardSkin;
+          const triangleLengthRatio = skin.point.triangleLengthRatio ?? 0.65;
+          const triangleInset = skin.point.triangleInset ?? 0;
+          const triangleAlpha = skin.point.triangleAlpha ?? 0.9;
+
+          const frameThickness = Math.min(pointW, pointH) * 0.6;
+          const innerY = frameThickness;
+          const innerHeight = BOARD_HEIGHT - frameThickness * 2;
+          const innerBottomY = innerY + innerHeight;
+          const halfH = BOARD_HEIGHT / 2;
+
+          const getStripeIndexInQuadrant = (pointIndex: number): number => {
+            // Left to right within each quadrant:
+            // Bottom left: 1–6
+            // Bottom right: 7–12
+            // Top right: 18–13
+            // Top left: 24–19
+            if (pointIndex >= 1 && pointIndex <= 6) {
+              return pointIndex - 1;
+            }
+            if (pointIndex >= 7 && pointIndex <= 12) {
+              return pointIndex - 7;
+            }
+            if (pointIndex >= 13 && pointIndex <= 18) {
+              return 18 - pointIndex;
+            }
+            // 19–24
+            return 24 - pointIndex;
+          };
+
+          g.clear();
+
+          for (let i = 1; i <= 24; i++) {
+            const center = pointIndexToPixelCenter(i);
+            const isTopHalf = center.y < halfH;
+            const stripeIndex = getStripeIndexInQuadrant(i);
+            const isLight = stripeIndex % 2 === 0;
+            const color = isLight ? skin.point.light : skin.point.dark;
+
+            const baseHalfWidth = pointW * 0.48;
+            const baseLeftX = center.x - baseHalfWidth;
+            const baseRightX = center.x + baseHalfWidth;
+
+            let baseY: number;
+            let tipY: number;
+
+            if (isTopHalf) {
+              baseY = innerY + triangleInset;
+              const maxLen = halfH - baseY;
+              const len = maxLen * triangleLengthRatio;
+              tipY = baseY + len;
+            } else {
+              baseY = innerBottomY - triangleInset;
+              const maxLen = baseY - halfH;
+              const len = maxLen * triangleLengthRatio;
+              tipY = baseY - len;
+            }
+
+            g.poly([
+              baseLeftX,
+              baseY,
+              baseRightX,
+              baseY,
+              center.x,
+              tipY,
+            ]).fill({ color, alpha: triangleAlpha });
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <BoardHitArea
       hitArea={new Rectangle(0, 0, BOARD_WIDTH, BOARD_HEIGHT)}
       onPointerDown={handlePointerDown}
     >
       <BoardSurface />
-      {/* <PointLabels /> */}
+      <BoardStripes />
       <BoardPieces
         state={state}
         lastMove={lastMove}

@@ -101,6 +101,8 @@ export function GameScreen({ sync, navigate }: GameScreenProps) {
         <Application
           background={theme.colors.background}
           resizeTo={resizeTarget}
+          resolution={typeof window !== "undefined" ? window.devicePixelRatio || 2 : 1}
+          autoDensity
         >
           <GameLayout width={boardSize.width} height={boardSize.height}>
             <BackgammonBoard session={session} />

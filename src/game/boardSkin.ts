@@ -16,6 +16,9 @@ export interface BoardSkin {
   point: {
     light: number;
     dark: number;
+    triangleLengthRatio?: number;
+    triangleInset?: number;
+    triangleAlpha?: number;
   };
   checker: {
     light: {
@@ -53,6 +56,9 @@ export const modernClassicBoardSkin: BoardSkin = {
   point: {
     light: 0xf5e6c8,
     dark: 0xc19a6b,
+    triangleLengthRatio: 0.65,
+    triangleInset: 0,
+    triangleAlpha: 0.9,
   },
   checker: {
     light: {

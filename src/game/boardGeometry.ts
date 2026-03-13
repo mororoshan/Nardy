@@ -10,12 +10,12 @@ export const BOARD_WIDTH = 700;
 export const BOARD_HEIGHT = 500;
 /** Aspect ratio width/height for CSS aspect-ratio. */
 export const BOARD_ASPECT_RATIO = BOARD_WIDTH / BOARD_HEIGHT;
-export const BAR_WIDTH = 24;
+export const BAR_WIDTH = 20;
 
 const halfW = (BOARD_WIDTH - BAR_WIDTH) / 2;
 const halfH = BOARD_HEIGHT / 2;
-export const pointW = halfW / 6;
-export const pointH = halfH / 6;
+export const pointW = halfW / 6.5;
+export const pointH = halfH / 6.5;
 
 /** Hit radius for point detection. */
 const HIT_RADIUS = Math.min(pointW, pointH) * 0.55;
@@ -37,14 +37,17 @@ export function pointIndexToPixelCenter(pointIndex: number): PointCenter {
   let x: number;
   let y: number;
 
+  const someNum = 6.5;
+  const someNum2 = 18.5;
+
   if (i <= 6) {
-    x = halfW - (6.5 - i) * pointW;
+    x = halfW - (someNum - i) * pointW;
     y = halfH + halfH / 2;
   } else if (i <= 12) {
-    x = halfW + BAR_WIDTH + (i - 6.5) * pointW;
+    x = halfW + BAR_WIDTH + (i - someNum) * pointW;
     y = halfH + halfH / 2;
   } else if (i <= 18) {
-    x = halfW + BAR_WIDTH + (18.5 - i) * pointW;
+    x = halfW + BAR_WIDTH + (someNum2 - i) * pointW;
     y = halfH / 2;
   } else {
     x = halfW - (i - 18.5) * pointW;

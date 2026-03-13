@@ -123,7 +123,15 @@ export function MainMenu({
     [touchClass, extra].filter(Boolean).join(" ");
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center p-lg text-text">
+    <main
+      className="min-h-screen w-full flex items-center justify-center p-lg text-text"
+      style={{
+        backgroundImage: "url(/assets/main_bg.png)",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       <div className="bg-menu-overlay rounded-[16px] border-[3px] border-menu-wood-border outline outline-1 outline-menu-gold outline-offset-2 p-[48px] max-w-[560px] w-full shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
         <h1 className="text-menu-gold text-[32px] font-semibold font-[Georgia,serif] m-0 mb-xl text-center">
           Backgammon

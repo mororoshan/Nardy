@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import type { NavigateFunction } from "react-router-dom";
 import { MainMenu } from "../components/MainMenu";
 import type { UseWebRtcSyncResult } from "../hooks/useWebRtcSync";
@@ -20,7 +21,8 @@ export function MainMenuScreen({
     navigate({ pathname: "/game", search: window.location.search });
   };
 
-  return (
+  const app = document.getElementById("app");
+  const menu = (
     <MainMenu
       touchFriendly={isNarrow}
       queueStatus={sync.queueStatus}
@@ -59,4 +61,8 @@ export function MainMenuScreen({
       }}
     />
   );
+  if (app) {
+    return createPortal(menu, app);
+  }
+  return menu;
 }
