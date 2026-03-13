@@ -2,7 +2,11 @@ import { useState } from "react";
 import { getRoomFromUrl } from "../sync/roomUrl";
 import type { LeaderboardEntry } from "../sync/signalingClient";
 import { Button } from "./ui";
-import type { QueueStatus } from "../hooks/useWebRtcSync";
+import {
+  getSignalingErrorDisplayMessage,
+  type QueueStatus,
+  type LastSignalingError,
+} from "../hooks/useWebRtcSync";
 
 export interface MainMenuProps {
   onCreateGame: () => Promise<void>;
@@ -13,6 +17,8 @@ export interface MainMenuProps {
   onCancelRanked?: () => void;
   /** "searching" while in ranked queue. */
   queueStatus?: QueueStatus;
+  /** Last ranked/signaling error (e.g. queue.not_identified). Shown with code-based message when set. */
+  rankedError?: LastSignalingError | null;
   /** Re-create room as host with the same room id (for creator rejoin). */
   onRejoinAsHost?: (roomId: string) => Promise<void>;
   /** Play vs bot (AI plays black). */
@@ -38,6 +44,7 @@ export function MainMenu({
   onPlayRanked,
   onCancelRanked,
   queueStatus = "idle",
+  rankedError = null,
   onRejoinAsHost,
   onSinglePlayer,
   onTwoPlayers,
@@ -54,6 +61,7 @@ export function MainMenu({
   const [error, setError] = useState<string | null>(null);
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
   const searching = queueStatus === "searching";
+  const rankedErrorMessage = getSignalingErrorDisplayMessage(rankedError ?? null);
   const isNarrow = touchFriendly;
 
   const touchClass = touchFriendly ? "min-h-[44px]" : "";
@@ -217,6 +225,11 @@ export function MainMenu({
                 {playerRating != null && (
                   <p className="m-0 text-sm text-menu-gold-muted">
                     Your rating: {playerRating}
+                  </p>
+                )}
+                {rankedErrorMessage && (
+                  <p role="alert" className="m-0 text-sm text-error">
+                    {rankedErrorMessage}
                   </p>
                 )}
                 {searching && onCancelRanked && (

@@ -26,6 +26,7 @@ export function MainMenuScreen({
     <MainMenu
       touchFriendly={isNarrow}
       queueStatus={sync.queueStatus}
+      rankedError={sync.lastSignalingError}
       playerRating={sync.playerRating}
       onOpenLeaderboard={() => sync.fetchLeaderboard()}
       leaderboardEntries={sync.leaderboardEntries}

@@ -163,4 +163,80 @@ describe("SignalingClient", () => {
       expect(parsed.payload.offset).toBe(0);
     });
   });
+
+  describe("queue.status", () => {
+    it("calls onQueueStatus with mode and status when server sends queue.status", async () => {
+      const client = new SignalingClient("ws://test");
+      const statuses: { mode: string | undefined; status: "joined" | "left" }[] = [];
+      client.setCallbacks({
+        onQueueStatus: (mode, status) => statuses.push({ mode, status }),
+      });
+
+      const connectPromise = client.connect();
+      const ws = mockWsInstances[mockWsInstances.length - 1];
+      ws.onopen?.();
+      await connectPromise;
+      ws.readyState = MockWebSocket.OPEN;
+
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: "queue.status",
+          payload: { mode: "ranked-classic", status: "joined" },
+        }),
+      } as MessageEvent);
+
+      expect(statuses).toHaveLength(1);
+      expect(statuses[0]).toEqual({ mode: "ranked-classic", status: "joined" });
+    });
+
+    it("calls onQueueStatus with status left when server sends queue.status without mode", async () => {
+      const client = new SignalingClient("ws://test");
+      const statuses: { mode: string | undefined; status: "joined" | "left" }[] = [];
+      client.setCallbacks({
+        onQueueStatus: (mode, status) => statuses.push({ mode, status }),
+      });
+
+      const connectPromise = client.connect();
+      const ws = mockWsInstances[mockWsInstances.length - 1];
+      ws.onopen?.();
+      await connectPromise;
+      ws.readyState = MockWebSocket.OPEN;
+
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: "queue.status",
+          payload: { status: "left" },
+        }),
+      } as MessageEvent);
+
+      expect(statuses).toHaveLength(1);
+      expect(statuses[0].status).toBe("left");
+    });
+  });
+
+  describe("game.result.ack", () => {
+    it("calls onGameResultAck with roomId when server sends game.result.ack", async () => {
+      const client = new SignalingClient("ws://test");
+      const acks: string[] = [];
+      client.setCallbacks({
+        onGameResultAck: (roomId) => acks.push(roomId),
+      });
+
+      const connectPromise = client.connect();
+      const ws = mockWsInstances[mockWsInstances.length - 1];
+      ws.onopen?.();
+      await connectPromise;
+      ws.readyState = MockWebSocket.OPEN;
+
+      ws.onmessage?.({
+        data: JSON.stringify({
+          type: "game.result.ack",
+          payload: { roomId: "room-123" },
+        }),
+      } as MessageEvent);
+
+      expect(acks).toHaveLength(1);
+      expect(acks[0]).toBe("room-123");
+    });
+  });
 });

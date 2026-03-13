@@ -30,6 +30,8 @@ export interface MatchFoundPayload {
   roomId: string;
   myRole: "creator" | "joiner";
   opponent: { playerId: string; displayName?: string };
+  /** Authority for who starts the game (first mover). If set, use this instead of myRole for white/black. */
+  startingPlayerId?: string;
 }
 
 export interface SignalingCallbacks {
@@ -46,6 +48,10 @@ export interface SignalingCallbacks {
   onMatchFound?: (payload: MatchFoundPayload) => void;
   /** Ranked: leaderboard response after leaderboard request. */
   onLeaderboard?: (payload: LeaderboardPayload) => void;
+  /** Ranked: queue status after queue.join or queue.leave. */
+  onQueueStatus?: (mode: string | undefined, status: "joined" | "left") => void;
+  /** Ranked: server acknowledged game.result. */
+  onGameResultAck?: (roomId: string) => void;
 }
 
 export class SignalingClient {
@@ -163,6 +169,25 @@ export class SignalingClient {
         this.callbacks.onLeaderboard?.({ entries });
         break;
       }
+      case "queue.status": {
+        const payload = o.payload as Record<string, unknown> | undefined;
+        const status = payload?.status;
+        if (status === "joined" || status === "left") {
+          const mode =
+            typeof payload?.mode === "string" ? payload.mode : undefined;
+          this.callbacks.onQueueStatus?.(mode, status);
+        }
+        break;
+      }
+      case "game.result.ack": {
+        const payload = o.payload as Record<string, unknown> | undefined;
+        const roomId =
+          (typeof payload?.roomId === "string" ? payload.roomId : null) ??
+          (typeof o.roomId === "string" ? o.roomId : null);
+        if (roomId && roomId.length > 0)
+          this.callbacks.onGameResultAck?.(roomId);
+        break;
+      }
       case "match.found": {
         const payload = (o.payload as Record<string, unknown> | undefined) ?? o;
         const roomId =
@@ -190,6 +215,12 @@ export class SignalingClient {
           explicitRole ??
           (selfId && selfId < opponentPlayerId ? "creator" : "joiner");
 
+        const gameObj = payload.game as Record<string, unknown> | undefined;
+        const startingPlayerId =
+          typeof gameObj?.startingPlayerId === "string"
+            ? gameObj.startingPlayerId
+            : undefined;
+
         this.callbacks.onMatchFound?.({
           roomId,
           myRole,
@@ -200,6 +231,7 @@ export class SignalingClient {
                 ? opp.displayName
                 : undefined,
           },
+          startingPlayerId,
         });
         break;
       }

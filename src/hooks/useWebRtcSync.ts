@@ -92,6 +92,31 @@ export interface LastSignalingError {
   code?: string;
 }
 
+/** Known error codes → short user-facing message. Falls back to message when code unknown. */
+const SIGNALING_ERROR_MESSAGES: Record<string, string> = {
+  "identify.invalid": "Invalid player ID",
+  "queue.not_identified": "Identify first",
+  "queue.invalid_mode": "Invalid queue mode",
+  "queue.already_in_room": "Already in a room",
+  "join.identify_required": "Identify first to rejoin",
+  "game_result.invalid": "Invalid game result",
+  "game_result.unknown_room": "Game already ended",
+  "leaderboard.not_identified": "Identify first to view leaderboard",
+  "identify.error": "Server error (identify)",
+  "queue.error": "Server error (queue)",
+  "game_result.error": "Server error (recording result)",
+  "leaderboard.error": "Server error (leaderboard)",
+};
+
+export function getSignalingErrorDisplayMessage(
+  err: LastSignalingError | null,
+): string | null {
+  if (!err) return null;
+  if (err.code && SIGNALING_ERROR_MESSAGES[err.code])
+    return SIGNALING_ERROR_MESSAGES[err.code];
+  return err.message;
+}
+
 export type QueueStatus = "idle" | "searching";
 
 export interface UseWebRtcSyncResult {
@@ -543,8 +568,16 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     (payload: MatchFoundPayload) => {
       const ourId = getOrCreatePlayerId();
       const oppId = payload.opponent.playerId || "";
-      const whitePlayerId = payload.myRole === "creator" ? ourId : oppId;
-      const blackPlayerId = payload.myRole === "creator" ? oppId : ourId;
+      const startId = payload.startingPlayerId;
+      const whitePlayerId =
+        startId != null && startId.length > 0
+          ? startId === ourId
+            ? ourId
+            : oppId
+          : payload.myRole === "creator"
+            ? ourId
+            : oppId;
+      const blackPlayerId = whitePlayerId === ourId ? oppId : ourId;
       rankedMatchInfoRef.current = {
         opponentPlayerId: oppId,
         whitePlayerId,
@@ -612,6 +645,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           onSignal: (data) => connectionRef.current?.receiveSignal(data),
           onPeerLeft: cleanup,
           onError: () => cleanup(),
+          onGameResultAck: () => {},
           onClose: () => {
             if (reconnectingRef.current) return;
             cleanup();
@@ -655,6 +689,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           onSignal: (data) => conn.receiveSignal(data),
           onPeerLeft: cleanup,
           onError: () => cleanup(),
+          onGameResultAck: () => {},
           onClose: () => {
             if (reconnectingRef.current) return;
             cleanup();
@@ -686,6 +721,10 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         setPlayerRating(payload.rating);
         setLastSignalingError(null);
         signaling.queueJoin(RANKED_QUEUE_MODE);
+      },
+      onQueueStatus: (_mode, status) => {
+        if (status === "left") setQueueStatus("idle");
+        if (status === "joined") setQueueStatus("searching");
       },
       onMatchFound: (payload) => setupRoomAfterMatchFound(payload),
       onError: (message: string, code?: string) => {
