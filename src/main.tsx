@@ -6,7 +6,7 @@ import App from "./App";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const baseUrl = import.meta.env.BASE_URL ?? "/";
-const menuBgUrl = `${baseUrl}assets/menu-bg.png`;
+const menuBgUrl = `${baseUrl}assets/main_bg.png`;
 const routerBasename = baseUrl.replace(/\/$/, "") || "/";
 
 createRoot(document.getElementById("pixi-container")!).render(
