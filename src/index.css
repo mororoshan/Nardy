@@ -45,10 +45,6 @@
     padding: 0;
     color: rgba(255, 255, 255, 0.87);
     background-color: #020617;
-    background-image: var(--menu-bg-url, url("/assets/menu-bg.png"));
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
   }
   #app {
     width: 100%;

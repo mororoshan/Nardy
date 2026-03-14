@@ -7,13 +7,6 @@
     <title>PixiJS - Template</title>
   </head>
   <body>
-    <script>
-      (function () {
-        var path = location.pathname;
-        var base = path.endsWith("/") ? path : path.replace(/\/[^/]*$/, "/") || "/";
-        document.documentElement.style.setProperty("--menu-bg-url", "url(" + base + "assets/menu-bg.png)");
-      })();
-    </script>
     <div id="app">
       <div id="pixi-container"></div>
     </div>
