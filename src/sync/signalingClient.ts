@@ -29,6 +29,8 @@ export interface LeaderboardPayload {
 export interface MatchFoundPayload {
   roomId: string;
   myRole: "creator" | "joiner";
+  /** Our player id (from server; use for game.result and white/black). */
+  self?: { playerId: string };
   opponent: { playerId: string; displayName?: string };
   /** Authority for who starts the game (first mover). If set, use this instead of myRole for white/black. */
   startingPlayerId?: string;
@@ -37,7 +39,7 @@ export interface MatchFoundPayload {
 export interface SignalingCallbacks {
   onCreated?: (roomId: string) => void;
   onJoined?: (roomId: string) => void;
-  onPeerJoined?: () => void;
+  onPeerJoined?: (payload?: { displayName?: string }) => void;
   onSignal?: (data: unknown) => void;
   onPeerLeft?: () => void;
   onError?: (message: string, code?: string) => void;
@@ -106,9 +108,17 @@ export class SignalingClient {
       case "joined":
         if (typeof o.roomId === "string") this.callbacks.onJoined?.(o.roomId);
         break;
-      case "peer_joined":
-        this.callbacks.onPeerJoined?.();
+      case "peer_joined": {
+        const payload = o.payload as Record<string, unknown> | undefined;
+        const displayName =
+          typeof payload?.displayName === "string"
+            ? payload.displayName
+            : undefined;
+        this.callbacks.onPeerJoined?.(
+          displayName != null ? { displayName } : undefined,
+        );
         break;
+      }
       case "signal":
         this.callbacks.onSignal?.(o.data);
         break;
@@ -224,6 +234,7 @@ export class SignalingClient {
         this.callbacks.onMatchFound?.({
           roomId,
           myRole,
+          self: selfId ? { playerId: selfId } : undefined,
           opponent: {
             playerId: opponentPlayerId,
             displayName:
@@ -240,16 +251,21 @@ export class SignalingClient {
     }
   }
 
-  createRoom(roomId?: string): void {
+  createRoom(roomId?: string, displayName?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    const msg =
+    const msg: Record<string, unknown> =
       roomId != null ? { type: "create", roomId } : { type: "create" };
+    if (displayName != null && displayName.trim())
+      msg.displayName = displayName.trim().slice(0, 32);
     this.ws.send(JSON.stringify(msg));
   }
 
-  joinRoom(roomId: string): void {
+  joinRoom(roomId: string, displayName?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    this.ws.send(JSON.stringify({ type: "join", roomId }));
+    const msg: Record<string, unknown> = { type: "join", roomId };
+    if (displayName != null && displayName.trim())
+      msg.displayName = displayName.trim().slice(0, 32);
+    this.ws.send(JSON.stringify(msg));
   }
 
   sendSignal(data: unknown): void {
@@ -263,10 +279,10 @@ export class SignalingClient {
     }
   }
 
-  /** Ranked: identify with playerId and displayName. Call before queue.join; wait for onIdentified. */
-  identify(playerId: string, displayName?: string): void {
+  /** Ranked: identify with JWT accessToken; server derives player_id from token. Call before queue.join; wait for onIdentified. */
+  identify(accessToken: string, displayName?: string): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    const msg: Record<string, unknown> = { type: "identify", playerId };
+    const msg: Record<string, unknown> = { type: "identify", accessToken };
     if (displayName != null) msg.displayName = displayName;
     this.ws.send(JSON.stringify(msg));
   }

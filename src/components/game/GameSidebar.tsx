@@ -195,6 +195,11 @@ export function GameSidebar({
             Rating: {session.playerRating}
           </p>
         )}
+        {session.remotePeerDisplayName && (
+          <p className="m-0 text-xs text-text-muted">
+            Playing with {session.remotePeerDisplayName}
+          </p>
+        )}
         {canShare && (
           <div className="flex items-center gap-sm flex-wrap">
             <Button

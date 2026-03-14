@@ -5,6 +5,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import type { UseWebRtcSyncResult } from "../../src/hooks/useWebRtcSync";
+import { AuthProvider } from "../../src/contexts/AuthContext";
 import { MainMenuScreen } from "../../src/screens/MainMenuScreen";
 
 function createMockSync(): UseWebRtcSyncResult {
@@ -29,6 +30,7 @@ function createMockSync(): UseWebRtcSyncResult {
     leaderboardError: null,
     leaderboardLoading: false,
     lastSignalingError: null,
+    remotePeerDisplayName: null,
     reportGameResult: vi.fn(),
     sendDice: vi.fn(),
     sendCurrentState: vi.fn(),
@@ -46,12 +48,14 @@ describe("MainMenuScreen", () => {
     const mockSetRankedSearchStarted = vi.fn();
 
     render(
-      <MainMenuScreen
-        sync={mockSync}
-        navigate={mockNavigate}
-        setRankedSearchStarted={mockSetRankedSearchStarted}
-        isNarrow={false}
-      />,
+      <AuthProvider>
+        <MainMenuScreen
+          sync={mockSync}
+          navigate={mockNavigate}
+          setRankedSearchStarted={mockSetRankedSearchStarted}
+          isNarrow={false}
+        />
+      </AuthProvider>,
     );
 
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(

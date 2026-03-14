@@ -150,11 +150,21 @@ function BoardSurface() {
           color: skin.frameWood.highlight,
           alpha: 0.5,
         });
-        g.rect(innerX, innerY + innerHeight - bevelSize, innerWidth, bevelSize).fill({
+        g.rect(
+          innerX,
+          innerY + innerHeight - bevelSize,
+          innerWidth,
+          bevelSize,
+        ).fill({
           color: skin.frameWood.shadow,
           alpha: 0.6,
         });
-        g.rect(innerX + innerWidth - bevelSize, innerY, bevelSize, innerHeight).fill({
+        g.rect(
+          innerX + innerWidth - bevelSize,
+          innerY,
+          bevelSize,
+          innerHeight,
+        ).fill({
           color: skin.frameWood.shadow,
           alpha: 0.6,
         });
@@ -498,19 +508,15 @@ export function BackgammonBoard({ session }: BackgammonBoardProps) {
               tipY = baseY - len;
             }
 
-            g.poly([
-              baseLeftX,
-              baseY,
-              baseRightX,
-              baseY,
-              center.x,
-              tipY,
-            ]).fill({ color, alpha: triangleAlpha });
+            g.poly([baseLeftX, baseY, baseRightX, baseY, center.x, tipY]).fill({
+              color,
+              alpha: triangleAlpha,
+            });
           }
         }}
       />
     );
-  }
+  };
 
   return (
     <BoardHitArea

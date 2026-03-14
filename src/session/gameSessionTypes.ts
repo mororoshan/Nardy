@@ -44,4 +44,6 @@ export interface NardiGameSession {
   reportGameResult?: (winner: Player) => void;
   /** ELO rating from server (identified); shown in sidebar for ranked games when set. */
   playerRating?: number | null;
+  /** Casual: display name of the other peer (from peer_joined); null in ranked or until received. */
+  remotePeerDisplayName?: string | null;
 }

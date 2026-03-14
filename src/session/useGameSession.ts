@@ -57,6 +57,7 @@ export function useGameSession(
       isRankedGame: sync.isRankedGame,
       reportGameResult: sync.reportGameResult,
       playerRating: sync.playerRating,
+      remotePeerDisplayName: sync.remotePeerDisplayName,
     };
   }, [mode, sync, localPlayMode]);
 }

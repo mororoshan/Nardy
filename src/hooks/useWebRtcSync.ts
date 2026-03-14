@@ -28,6 +28,7 @@ import {
 import { setRoomInUrl } from "../sync/roomUrl";
 import { setLastRoom, getLastRoom } from "../sync/lastRoomStorage";
 import { getOrCreatePlayerId, getDisplayName } from "../sync/playerIdentity";
+import { useAuth } from "../contexts/AuthContext";
 import type {
   IdentifiedPayload,
   LeaderboardEntry,
@@ -153,6 +154,8 @@ export interface UseWebRtcSyncResult {
   leaderboardLoading: boolean;
   /** Last error from signaling in ranked flow (e.g. queue.not_identified); null when cleared or on success. */
   lastSignalingError: LastSignalingError | null;
+  /** Casual: display name of the other peer (from peer_joined); null until received or in ranked. */
+  remotePeerDisplayName: string | null;
   /** Ranked: call when game ends so server can update ELO. Reported once per ranked session (first game). No-op if not ranked or already reported. */
   reportGameResult: (winner: Player) => void;
   sendDice: (dice: [number, number]) => void;
@@ -168,10 +171,14 @@ export interface UseWebRtcSyncResult {
 }
 
 export function useWebRtcSync(): UseWebRtcSyncResult {
+  const { session, user } = useAuth();
   const [connectionStatus, setConnectionStatus] =
     useState<ConnectionStatusValue>(ConnectionStatus.Disconnected);
   const [roomId, setRoomId] = useState<string | null>(null);
   const [isCreator, setIsCreator] = useState<boolean | null>(null);
+  const [remotePeerDisplayName, setRemotePeerDisplayName] = useState<
+    string | null
+  >(null);
 
   const [connectionQuality, setConnectionQuality] =
     useState<ConnectionQualityValue>(ConnectionQuality.Offline);
@@ -212,6 +219,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     reconnectingRef.current = false;
     rankedMatchInfoRef.current = null;
     gameResultReportedRef.current = false;
+    setRemotePeerDisplayName(null);
     setQueueStatus("idle");
     setIsRankedGame(false);
     setPlayerRating(null);
@@ -431,7 +439,8 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           setRoomId(id);
           setRoomInUrl(id);
         },
-        onPeerJoined: () => {
+        onPeerJoined: (payload) => {
+          setRemotePeerDisplayName(payload?.displayName ?? null);
           const sendSignal = (data: unknown) =>
             signalingRef.current?.sendSignal(data);
           const conn = createOfferer(sendSignal);
@@ -490,7 +499,10 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           cleanup();
         },
       });
-      signaling.createRoom(rejoinRoomId?.trim() || undefined);
+      signaling.createRoom(
+        rejoinRoomId?.trim() || undefined,
+        getDisplayName() || undefined,
+      );
     },
     [cleanup, handleMessage, scheduleReconnect],
   );
@@ -559,14 +571,14 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
           cleanup();
         },
       });
-      signaling.joinRoom(id);
+      signaling.joinRoom(id, getDisplayName() || undefined);
     },
     [cleanup, handleMessage, scheduleReconnect],
   );
 
   const setupRoomAfterMatchFound = useCallback(
     (payload: MatchFoundPayload) => {
-      const ourId = getOrCreatePlayerId();
+      const ourId = payload.self?.playerId ?? getOrCreatePlayerId();
       const oppId = payload.opponent.playerId || "";
       const startId = payload.startingPlayerId;
       const whitePlayerId =
@@ -714,8 +726,12 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       setQueueStatus("idle");
       throw e;
     }
-    const playerId = getOrCreatePlayerId();
-    const displayName = getDisplayName();
+    const accessToken = session?.access_token ?? "";
+    const displayName =
+      ((user?.user_metadata as Record<string, unknown> | undefined)
+        ?.display_name as string | undefined) ??
+      user?.email ??
+      "Player";
     signaling.setCallbacks({
       onIdentified: (payload: IdentifiedPayload) => {
         setPlayerRating(payload.rating);
@@ -737,8 +753,8 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         cleanup();
       },
     });
-    signaling.identify(playerId, displayName);
-  }, [cleanup, setupRoomAfterMatchFound]);
+    signaling.identify(accessToken, displayName);
+  }, [cleanup, setupRoomAfterMatchFound, session?.access_token, user]);
 
   const leaveRankedQueue = useCallback(() => {
     if (queueStatus === "searching") {
@@ -764,6 +780,12 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         return;
       }
 
+      const accessToken = session?.access_token ?? "";
+      const displayName =
+        ((user?.user_metadata as Record<string, unknown> | undefined)
+          ?.display_name as string | undefined) ??
+        user?.email ??
+        "Player";
       client.setCallbacks({
         onIdentified: () => {
           client.requestLeaderboard(limit ?? 50, offset ?? 0);
@@ -787,9 +809,9 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
         },
       });
 
-      client.identify(getOrCreatePlayerId(), getDisplayName());
+      client.identify(accessToken, displayName);
     },
-    [],
+    [session?.access_token, user],
   );
 
   const reportGameResult = useCallback((winner: Player) => {
@@ -944,6 +966,7 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
     leaderboardError,
     leaderboardLoading,
     lastSignalingError,
+    remotePeerDisplayName,
     createGame,
     joinGame,
     joinRankedQueue,

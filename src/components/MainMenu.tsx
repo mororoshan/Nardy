@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { getRoomFromUrl } from "../sync/roomUrl";
+import { getDisplayName, setDisplayName } from "../sync/playerIdentity";
 import type { LeaderboardEntry } from "../sync/signalingClient";
 import { Button } from "./ui";
 import {
@@ -36,6 +37,14 @@ export interface MainMenuProps {
   leaderboardError?: string | null;
   /** True while leaderboard is loading. */
   leaderboardLoading?: boolean;
+  /** When true, expand the leaderboard section (e.g. after sign-in). */
+  forceExpandLeaderboard?: boolean;
+  /** Called when leaderboard has been expanded (reset force). */
+  onLeaderboardExpanded?: () => void;
+  /** Show Sign out when signed in. */
+  onSignOut?: () => void;
+  /** True when user is signed in (show Sign out). */
+  isSignedIn?: boolean;
 }
 
 export function MainMenu({
@@ -54,14 +63,34 @@ export function MainMenu({
   leaderboardEntries = null,
   leaderboardError = null,
   leaderboardLoading = false,
+  forceExpandLeaderboard = false,
+  onLeaderboardExpanded,
+  onSignOut,
+  isSignedIn = false,
 }: MainMenuProps) {
   const roomInUrl = getRoomFromUrl();
   const [joinRoomId, setJoinRoomId] = useState(roomInUrl ?? "");
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [leaderboardExpanded, setLeaderboardExpanded] = useState(false);
+  const [casualDisplayName, setCasualDisplayName] = useState(() =>
+    getDisplayName(),
+  );
+
+  useEffect(() => {
+    setCasualDisplayName(getDisplayName());
+  }, []);
+
+  useEffect(() => {
+    if (forceExpandLeaderboard) {
+      setLeaderboardExpanded(true);
+      onLeaderboardExpanded?.();
+    }
+  }, [forceExpandLeaderboard, onLeaderboardExpanded]);
   const searching = queueStatus === "searching";
-  const rankedErrorMessage = getSignalingErrorDisplayMessage(rankedError ?? null);
+  const rankedErrorMessage = getSignalingErrorDisplayMessage(
+    rankedError ?? null,
+  );
   const isNarrow = touchFriendly;
 
   const touchClass = touchFriendly ? "min-h-[44px]" : "";
@@ -193,6 +222,16 @@ export function MainMenu({
             >
               CONNECT
             </h2>
+            {isSignedIn && onSignOut && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onSignOut}
+                className="text-menu-gold-muted text-sm"
+              >
+                Sign out
+              </Button>
+            )}
             {onPlayRanked && (
               <>
                 <Button
@@ -255,7 +294,7 @@ export function MainMenu({
                   size="lg"
                   onClick={() => {
                     setLeaderboardExpanded(true);
-                    onOpenLeaderboard();
+                    onOpenLeaderboard?.();
                   }}
                   disabled={leaderboardLoading || loading !== null}
                   className={menuBtnClass()}
@@ -311,6 +350,30 @@ export function MainMenu({
                   )}
               </div>
             )}
+            <div className="flex flex-col gap-xs w-full max-w-[280px]">
+              <label
+                htmlFor="casual-name"
+                className="text-sm text-menu-gold-muted"
+              >
+                Your name (for casual games)
+              </label>
+              <input
+                id="casual-name"
+                type="text"
+                aria-label="Your name for casual games"
+                value={casualDisplayName}
+                onChange={(e) => {
+                  const v = e.target.value.trim().slice(0, 32);
+                  setCasualDisplayName(v || "Player");
+                  setDisplayName(v || "Player");
+                }}
+                onBlur={() =>
+                  setDisplayName(casualDisplayName.trim() || "Player")
+                }
+                className={inputClasses}
+                disabled={loading !== null}
+              />
+            </div>
             <Button
               variant="menu"
               size="lg"

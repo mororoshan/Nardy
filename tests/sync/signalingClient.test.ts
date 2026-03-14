@@ -167,7 +167,10 @@ describe("SignalingClient", () => {
   describe("queue.status", () => {
     it("calls onQueueStatus with mode and status when server sends queue.status", async () => {
       const client = new SignalingClient("ws://test");
-      const statuses: { mode: string | undefined; status: "joined" | "left" }[] = [];
+      const statuses: {
+        mode: string | undefined;
+        status: "joined" | "left";
+      }[] = [];
       client.setCallbacks({
         onQueueStatus: (mode, status) => statuses.push({ mode, status }),
       });
@@ -191,7 +194,10 @@ describe("SignalingClient", () => {
 
     it("calls onQueueStatus with status left when server sends queue.status without mode", async () => {
       const client = new SignalingClient("ws://test");
-      const statuses: { mode: string | undefined; status: "joined" | "left" }[] = [];
+      const statuses: {
+        mode: string | undefined;
+        status: "joined" | "left";
+      }[] = [];
       client.setCallbacks({
         onQueueStatus: (mode, status) => statuses.push({ mode, status }),
       });
