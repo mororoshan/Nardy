@@ -163,7 +163,7 @@ export function MainMenu({
     <main
       className="min-h-screen w-full flex items-center justify-center p-lg text-text"
       style={{
-        backgroundImage: "url(/assets/main_bg.png)",
+        backgroundImage: `url(${import.meta.env.BASE_URL}assets/main_bg.png)`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
