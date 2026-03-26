@@ -43,12 +43,11 @@ describe("webrtcSyncTypes chat_message", () => {
     const parsed = parseSyncMessage(raw);
 
     expect(parsed).not.toBeNull();
-    expect(parsed?.type).toBe(SyncMessageType.Chat);
     expect(parsed).toMatchObject({
       type: SyncMessageType.Chat,
       text: "legacy hello",
       sender: "Opponent",
+      timestamp: expect.any(Number),
     });
-    expect(typeof parsed?.timestamp).toBe("number");
   });
 });
