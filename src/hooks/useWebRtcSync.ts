@@ -369,7 +369,12 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
       }
 
       if (msg.type === SyncMessageType.Chat) {
-        useChatStore.getState().addMessage("remote", msg.text);
+        useChatStore.getState().addMessage({
+          from: "remote",
+          text: msg.text,
+          timestamp: msg.timestamp,
+          sender: msg.sender,
+        });
         return;
       }
 
@@ -895,7 +900,13 @@ export function useWebRtcSync(): UseWebRtcSyncResult {
 
   const sendChat = useCallback((text: string) => {
     const conn = connectionRef.current;
-    if (conn) conn.send({ type: SyncMessageType.Chat, text });
+    if (!conn) return;
+    conn.send({
+      type: SyncMessageType.Chat,
+      text,
+      timestamp: Date.now(),
+      sender: getDisplayName(),
+    });
   }, []);
 
   const sendNewGame = useCallback((resetMatchScore: boolean) => {

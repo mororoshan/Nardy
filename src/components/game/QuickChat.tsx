@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useChatStore } from "../../stores/chatStore";
 import { Button } from "../ui";
 
@@ -21,10 +22,30 @@ export interface QuickChatProps {
 export function QuickChat({ onSend, enabled }: QuickChatProps) {
   const messages = useChatStore((s) => s.messages);
   const addMessage = useChatStore((s) => s.addMessage);
+  const [typedMessage, setTypedMessage] = useState("");
+
+  const sendTypedMessage = () => {
+    if (!enabled) return;
+    const text = typedMessage.trim();
+    if (text.length === 0) return;
+    addMessage({
+      from: "local",
+      text,
+      timestamp: Date.now(),
+      sender: "You",
+    });
+    onSend(text);
+    setTypedMessage("");
+  };
 
   const handlePreset = (text: string) => {
     if (!enabled) return;
-    addMessage("local", text);
+    addMessage({
+      from: "local",
+      text,
+      timestamp: Date.now(),
+      sender: "You",
+    });
     onSend(text);
   };
 
@@ -61,12 +82,37 @@ export function QuickChat({ onSend, enabled }: QuickChatProps) {
                     : "text-text-muted font-semibold mr-sm"
                 }
               >
-                {msg.from === "local" ? "You" : "Opponent"}:
+                {msg.sender || (msg.from === "local" ? "You" : "Opponent")}:
               </span>
               <span className="text-text">{msg.text}</span>
             </div>
           ))
         )}
+      </div>
+      <div className="flex gap-sm">
+        <input
+          type="text"
+          value={typedMessage}
+          onChange={(e) => setTypedMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              sendTypedMessage();
+            }
+          }}
+          placeholder="Type a message"
+          className="flex-1 rounded-sm border border-border bg-surface p-sm text-sm text-text"
+          disabled={!enabled}
+          maxLength={500}
+        />
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={sendTypedMessage}
+          disabled={!enabled || typedMessage.trim().length === 0}
+        >
+          Send
+        </Button>
       </div>
       <div className="flex flex-wrap gap-sm">
         {QUICKCHAT_PRESETS.map((text) => (

@@ -11,7 +11,7 @@ export const SyncMessageType = {
   Dice: "dice",
   Pass: "pass",
   RequestState: "request_state",
-  Chat: "chat",
+  Chat: "chat_message",
   NewGame: "new_game",
 } as const;
 
@@ -84,6 +84,8 @@ const MAX_CHAT_LENGTH = 500;
 export interface ChatMessage {
   type: typeof SyncMessageType.Chat;
   text: string;
+  timestamp: number;
+  sender: string;
 }
 
 export type SyncMessage =
@@ -160,6 +162,20 @@ function isChatMessage(o: unknown): o is ChatMessage {
   return (
     obj.type === SyncMessageType.Chat &&
     typeof obj.text === "string" &&
+    (obj.text as string).length <= MAX_CHAT_LENGTH &&
+    typeof obj.timestamp === "number" &&
+    Number.isFinite(obj.timestamp) &&
+    typeof obj.sender === "string" &&
+    obj.sender.trim().length > 0
+  );
+}
+
+function isLegacyChatMessage(o: unknown): o is { type: "chat"; text: string } {
+  if (o === null || typeof o !== "object") return false;
+  const obj = o as Record<string, unknown>;
+  return (
+    obj.type === "chat" &&
+    typeof obj.text === "string" &&
     (obj.text as string).length <= MAX_CHAT_LENGTH
   );
 }
@@ -199,6 +215,15 @@ export function parseSyncMessage(raw: string): SyncMessage | null {
     return {
       type: SyncMessageType.Chat,
       text: String(obj.text).slice(0, MAX_CHAT_LENGTH),
+      timestamp: obj.timestamp,
+      sender: obj.sender.trim().slice(0, 64),
+    };
+  if (isLegacyChatMessage(obj))
+    return {
+      type: SyncMessageType.Chat,
+      text: String(obj.text).slice(0, MAX_CHAT_LENGTH),
+      timestamp: Date.now(),
+      sender: "Opponent",
     };
   return null;
 }
